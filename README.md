@@ -59,8 +59,28 @@ python scripts/run_portfolio_backtest.py --config configs/strategies/momentum_ba
 
 ```bash
 pytest tests/ -v
-# 39 个测试, 包含 PIT / look-ahead 杀手锏 / 优化器
+# 102 个测试, 包含 PIT / look-ahead 杀手锏 / 优化器 / 增量拉取 / fetch_state / append 模式
 ```
+
+### 7. 增量拉取 (日常使用)
+
+第一次拉完数据后, 每天收盘后只需追加最新交易日:
+
+```bash
+# 查看每类数据的覆盖范围
+newbee data status
+
+# 计划预览 (不下载, 不写 fetch_state)
+newbee data update --dry-run
+
+# 实际增量拉取 (从 last_date+1 到最新已收盘交易日)
+newbee data update
+
+# 只更新特定 category
+newbee data update --categories adj
+```
+
+fetch_state 持久化在 `data/_manifest/fetch_state.json`, 记录每种数据类型的 `first_date` / `last_date` / `row_count` / `file_count`。下次运行自动从 `last_date+1` 继续。
 
 ## 架构
 

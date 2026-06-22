@@ -2,8 +2,10 @@
 
 用法:
   newbee --help
-  newbee backtest <config.yaml>   # 组合回测
-  newbee alpha   <config.yaml>   # Alpha 回测 (IC, decile)
+  newbee backtest <config.yaml>              # 组合回测
+  newbee alpha   <config.yaml>              # Alpha 回测 (IC, decile)
+  newbee data status                         # 查看数据覆盖范围
+  newbee data update [--dry-run]             # 增量拉取数据
 """
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ from newbee.utils.config import (
     resolve_data_range,
     strategy_id,
 )
+from newbee.utils import logger as nb_logger
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +211,88 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------- 子命令: data ----------
+
+
+def cmd_data_status(args: argparse.Namespace) -> int:
+    """`newbee data status` — 打印每类数据的覆盖范围."""
+    from newbee.data.fetch_state import (
+        is_universe_stale,
+        progress_summary,
+        read_state,
+    )
+    from newbee.data.universe import StockPool
+    from newbee.data.calendar import latest_trading_day
+
+    root = args.data_root
+    state = read_state(root)
+    summary = progress_summary(state)
+
+    # universe sha
+    pool = StockPool.load(root / "universe" / "pool.parquet")
+    # sha 由 StockPool 内部 hash 文件; 直接复用其方法
+    current_sha = pool._compute_sha() if pool.path.exists() else None  # type: ignore[attr-defined]
+
+    print(f"=== newbee data status ===")
+    print(f"data_root:       {root}")
+    print(f"fetch_state:     {'present' if not state.is_fresh else 'missing (fresh)'}")
+    print(f"universe_sha:    state={state.universe_sha} current={current_sha}")
+    if is_universe_stale(state, current_sha):
+        print(f"  WARN: universe_sha 不一致 (universe 已变化)")
+
+    latest = latest_trading_day()
+    print(f"latest_trading:  {latest}")
+    print()
+    print(f"{'category':<12} {'first':<12} {'last':<12} {'days':<6} {'rows':<10} {'files':<6} {'updated_at'}")
+    print("-" * 80)
+    for cat, cov in state.categories.items():
+        first = cov.first_date.isoformat() if cov.first_date else "-"
+        last = cov.last_date.isoformat() if cov.last_date else "-"
+        days = cov.days_covered
+        rows = cov.row_count
+        files = cov.file_count
+        upd = cov.updated_at[:19] if cov.updated_at else "-"
+        print(f"{cat:<12} {first:<12} {last:<12} {days:<6} {rows:<10} {files:<6} {upd}")
+    return 0
+
+
+def cmd_data_update(args: argparse.Namespace) -> int:
+    """`newbee data update` — 增量拉取缺失数据."""
+    from newbee.data.incremental import build_plan, run_update
+
+    root = args.data_root
+    cats = args.categories or ["raw", "adj"]
+
+    # 计划 (总是打, 方便看)
+    plan = build_plan(categories=cats, root=root)
+    print(plan.render_table())
+
+    if args.dry_run:
+        nb_logger.info("[dry-run] exit 0, 未触发任何网络请求, 未写入 fetch_state")
+        return 0
+
+    result = run_update(
+        categories=cats,
+        root=root,
+        progress=not args.no_progress,
+        source=args.source,
+    )
+
+    print("\n=== Update Result ===")
+    for cat, summary in result.summaries.items():
+        print(
+            f"  {cat}: success={summary.success} failed={len(summary.failed)} "
+            f"elapsed={summary.elapsed_sec:.1f}s"
+        )
+    if result.skipped:
+        print(f"  skipped: {result.skipped}")
+    if result.has_failures():
+        print(f"\nWARN: {result.total_failed} 个 stock 失败")
+        return 1
+    print("\n✓ All up-to-date")
+    return 0
+
+
 # ---------- argparse ----------
 
 
@@ -251,6 +336,36 @@ def _build_parser() -> argparse.ArgumentParser:
     add_common(p_bt)
     p_bt.set_defaults(func=cmd_backtest)
 
+    # data (status / update)
+    p_data = sub.add_parser("data", help="数据层管理 (status / update)",
+                            description="查询每类数据的覆盖范围, 或执行增量拉取.")
+    p_data_sub = p_data.add_subparsers(dest="data_command", metavar="<data_command>")
+
+    # data status
+    p_ds = p_data_sub.add_parser("status", help="打印每类数据的 first/last/days/rows",
+                                 description="读取 fetch_state.json, 打印覆盖范围表.")
+    p_ds.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT,
+                      help=f"data 根目录 (默认 {DEFAULT_DATA_ROOT})")
+    p_ds.set_defaults(func=cmd_data_status)
+
+    # data update
+    p_du = p_data_sub.add_parser("update", help="增量拉取缺失数据",
+                                 description="对每类数据计算 resume 区间, "
+                                             "追加最新缺失日期.")
+    p_du.add_argument("--categories", nargs="+",
+                      choices=["raw", "adj", "universe", "pit", "alpha", "features"],
+                      help="要更新的 category (默认 raw adj)")
+    p_du.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT,
+                      help=f"data 根目录 (默认 {DEFAULT_DATA_ROOT})")
+    p_du.add_argument("--source", default="sina",
+                      choices=["sina", "em", "tx"],
+                      help="数据源 (默认 sina)")
+    p_du.add_argument("--dry-run", action="store_true",
+                      help="只打印计划, 不实际下载, 不写 fetch_state")
+    p_du.add_argument("--no-progress", action="store_true",
+                      help="不打 tqdm 进度条")
+    p_du.set_defaults(func=cmd_data_update)
+
     return parser
 
 
@@ -269,8 +384,20 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
 
-    # 子命令缺 config → 友好错误
-    if not getattr(args, "config", None):
+    # data 子命令未指定 status/update → 打 data help
+    if getattr(args, "command", None) == "data" and not getattr(args, "data_command", None):
+        sub_action = next(
+            (a for a in parser._actions
+             if isinstance(a, argparse._SubParsersAction) and a.dest == "data_command"),
+            None,
+        )
+        if sub_action:
+            sub_action.choices["status"].print_help()
+        print("\nERROR: newbee data 需要 status / update 子命令.", file=sys.stderr)
+        return 2
+
+    # alpha / backtest 子命令缺 config → 友好错误
+    if getattr(args, "command", None) in ("alpha", "backtest") and not getattr(args, "config", None):
         sub_action = next(
             (a for a in parser._actions
              if isinstance(a, argparse._SubParsersAction)), None
