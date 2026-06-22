@@ -1,1 +1,1 @@
-"""测试目录 (pytest 自动发现)."""
+"""tests — test suite for newbee."""

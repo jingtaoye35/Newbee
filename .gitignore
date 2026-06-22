@@ -21,10 +21,11 @@ env/
 .venv/
 env.bak/
 
-# 数据目录 (整个 data/ 都 gitignore, 含 raw/adj/features/alpha)
-data/
-# 唯一例外: 保留 data/.gitkeep 让空目录被跟踪
-!data/.gitkeep
+# 数据目录 (仅忽略仓库根目录的 datas/, 含 raw/adj/features/alpha;alpha_backend/datas/ 是源码包,需被跟踪)
+/datas
+/logs
+# 唯一例外: 保留根目录 datas/.gitkeep 让空目录被跟踪
+!/datas/.gitkeep
 
 # 配置文件
 .env
@@ -53,6 +54,5 @@ docs/output/
 *.seed
 
 # Claude Code / OpenSpec 本地工作区 (不入仓库)
-.claude/
-CLAUDE.md
-openspec/
+/openspec
+/.claude

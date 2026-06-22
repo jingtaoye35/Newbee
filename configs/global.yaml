@@ -1,0 +1,16 @@
+project:
+  name: newbee
+  version: 0.1.0
+
+runtime:
+  max_core: 8
+  log_level: INFO
+  log_path: "/Users/yejingtao/JohnsonProject/Newbee/logs"
+
+paths:
+  datasource_dir: "/Users/yejingtao/JohnsonProject/Newbee/datas/datasource"
+  report_dir: "/Users/yejingtao/JohnsonProject/Newbee/datas/report"
+  universe: ""
+
+external:
+  akshare_endpoint: ""

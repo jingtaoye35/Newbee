@@ -5,34 +5,31 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "newbee"
 version = "0.1.0"
-description = "量化研究 + 交易信号生成平台 (M1 骨架)"
+description = "量化研究 + 交易信号生成平台"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
 authors = [{ name = "yejingtao" }]
 
 dependencies = [
-    # 核心计算
     "numpy>=1.26",
     "pandas>=2.1",
     "scipy>=1.11",
-    # 存储
     "duckdb>=0.10",
-    "pyarrow>=14",          # parquet 支持
-    # 交易日历
-    "exchange_calendars>=4.2",
-    # 数据源
-    "akshare>=1.12",        # 主数据源
-    "tushare>=1.4",         # 备选, 保留接口
-    # 配置
+    "pyarrow>=14",
     "pyyaml>=6.0",
     "pydantic>=2.5",
-    # 可视化
     "matplotlib>=3.8",
     "seaborn>=0.13",
-    # 工具
     "tqdm>=4.66",
     "python-dotenv>=1.0",
+    "pytz-2026.3",
+
+    # 外部数据源
+    "exchange_calendars>=4.2",
+    "akshare>=1.12",        # 主数据源
+    "baostock>=0.8.8",      # 跨源 fallback (akshare 失效时接管)
+    "tushare>=1.4",         # 备选, 保留接口
 ]
 
 [project.optional-dependencies]
@@ -46,13 +43,31 @@ dev = [
 ]
 
 [project.scripts]
-newbee = "newbee.cli:main"
+newbee = "backend.cli:main"
+newbee-data = "datasource.cli:main"
 
 [tool.setuptools]
-packages = ["newbee"]
+package-dir = { "" = "src" }
+packages = [
+    "backend",
+    "backend.engines",
+    "backend.factors",
+    "backend.factors.classic",
+    "backend.portfolio",
+    "backend.signals",
+    "backend.strategy",
+    "backend.strategy.watchlist",
+    "datasource",
+    "datasource.data_adapter",
+    "datasource.data_schemas",
+    "datasource.service",
+    "datasource.storage",
+    "utils",
+]
 
 [tool.setuptools.package-data]
-newbee = ["py.typed"]
+backend = ["py.typed"]
+"datasource" = ["data_schemas/*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -61,13 +76,13 @@ addopts = "-v --tb=short"
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "B", "UP"]
 ignore = ["E501"]  # line-too-long, 单独配
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict_optional = true
 warn_unused_ignores = true
