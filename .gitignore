@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# 虚拟环境
+venv/
+env/
+.venv/
+env.bak/
+
+# 数据目录 (整个 data/ 都 gitignore, 含 raw/adj/features/alpha)
+data/
+# 唯一例外: 保留 data/.gitkeep 让空目录被跟踪
+!data/.gitkeep
+
+# 配置文件
+.env
+.env.local
+*.local.yaml
+
+# docs 运行产物 (图片 / 中间数据)
+docs/output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# 临时文件
+*.tmp
+*.bak
+*.log
+*.pid
+*.seed
+
+# Claude Code / OpenSpec 本地工作区 (不入仓库)
+.claude/
+CLAUDE.md
+openspec/

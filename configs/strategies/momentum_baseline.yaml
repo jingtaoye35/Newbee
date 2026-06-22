@@ -1,0 +1,49 @@
+# Momentum Baseline Strategy (M1 完整实验配置)
+# 用法:
+#   python scripts/run_portfolio_backtest.py --config configs/strategies/momentum_baseline.yaml
+
+name: momentum_baseline
+version: "1.0"
+
+# 因子
+factor:
+  name: momentum_20
+  type: classic
+  window: 20
+  field: adj_close  # 用前复权价
+
+# 数据
+data:
+  universe: csi1000
+  source: sina
+  adjust: qfq
+  start: "2020-01-01"
+  end: "2024-12-31"
+  field: adj_close
+
+# 评估
+evaluation:
+  horizon: 20  # forward return 窗口
+  n_groups: 10  # decile 数量
+  min_valid: 30  # 最少有效股票数
+
+# 组合
+portfolio:
+  optimizer: mean_variance  # mean_variance | equal_weight | inverse_vol
+  rebalance_freq: 20  # 调仓频率 (天), 月频
+  lookback_cov: 60  # 协方差估计窗口
+  risk_aversion: 1.0  # λ
+  max_turnover: 0.3  # 单次调仓最大换手率
+  max_weight: 0.05  # 单只最大权重
+
+# 成本
+cost:
+  commission_rate: 0.0005  # 佣金万 5
+  slippage_rate: 0.001  # 滑点万 10
+  stamp_tax_rate: 0.0  # 印花税 (M1 不启用)
+
+# 缓存
+cache:
+  enabled: true
+  version: "1.0"
+  notes: "alpha_store 数据 + 组合结果"
