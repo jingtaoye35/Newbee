@@ -21,10 +21,10 @@ env/
 .venv/
 env.bak/
 
-# 数据目录 (整个 data/ 都 gitignore, 含 raw/adj/features/alpha)
-data/
-# 唯一例外: 保留 data/.gitkeep 让空目录被跟踪
-!data/.gitkeep
+# 数据目录 (仅忽略仓库根目录的 data/, 含 raw/adj/features/alpha;newbee/data/ 是源码包,需被跟踪)
+/data/
+# 唯一例外: 保留根目录 data/.gitkeep 让空目录被跟踪
+!/data/.gitkeep
 
 # 配置文件
 .env
