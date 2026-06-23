@@ -1,0 +1,54 @@
+name: KData
+description: 日 K 线 (post-adjusted, long format).
+schema_version: "1.0"
+frequency: daily
+storage: data/KData.parquet
+primary_key:
+  - trading_date
+  - stock_code
+fields:
+  - name: trading_date
+    pyarrow: string
+    nullable: false
+    unit: YYYY-MM-DD
+    description: 交易日 (ISO string, 10 chars).
+  - name: stock_code
+    pyarrow: string
+    nullable: false
+    unit: 9-char .SH/.SZ
+    description: 9 字符股票代码, 形如 "600000.SH" / "000012.SZ".
+  - name: open
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 开盘价 (nullable, 停牌/未上市为 NaN).
+  - name: high
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 最高价 (nullable).
+  - name: low
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 最低价 (nullable).
+  - name: close
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 收盘价 (nullable).
+  - name: amount
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 成交额 (nullable).
+  - name: volume
+    pyarrow: float
+    nullable: true
+    unit: shares
+    description: 成交量 (nullable).
+  - name: close_post_adj
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 后复权收盘价 = close * adj_factor (post-adjusted).
