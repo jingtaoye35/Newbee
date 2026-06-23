@@ -49,10 +49,11 @@ dev = [
 newbee = "newbee.cli:main"
 
 [tool.setuptools]
-packages = ["newbee"]
+packages = ["newbee", "newbee.datasource", "newbee.datasource.storage", "newbee.datasource.sources", "newbee.datasource.service", "newbee.engines", "newbee.factors", "newbee.factors.classic", "newbee.portfolio", "newbee.utils"]
 
 [tool.setuptools.package-data]
 newbee = ["py.typed"]
+"newbee.datasource" = ["schemas/*.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
