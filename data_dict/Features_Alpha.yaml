@@ -1,0 +1,19 @@
+name: Features_Alpha
+description: 因子 / Alpha 矩阵 (npy cache, 非 parquet). 字段定义不适用, 仅 metadata.
+schema_version: "1.0"
+frequency: daily
+storage: data/_npy/
+npy_class:
+  layout: matrix
+  shape:
+    - N
+  dir_template: "data/{category}/{name}/{YYYY-MM-DD}.npy"
+  manifest: "data/{category}/{name}/manifest.json"
+  manifest_fields:
+    - universe_sha
+    - dates
+    - count
+    - version
+    - last_asof
+    - last_updated
+  fields: []

@@ -1,0 +1,23 @@
+name: Universe
+description: 自建股票池 (append-only, stock_index 单调递增).
+schema_version: "1.0"
+frequency: static
+storage: data/Universe.parquet
+primary_key:
+  - stock_index
+fields:
+  - name: stock_index
+    pyarrow: int32
+    nullable: false
+    unit: int
+    description: 单调递增 idx, 一旦分配永不回收 (即使股票退市).
+  - name: stock_code
+    pyarrow: string
+    nullable: false
+    unit: 9-char .SH/.SZ
+    description: 9 字符股票代码.
+  - name: ipo_date
+    pyarrow: string
+    nullable: false
+    unit: YYYY-MM-DD
+    description: IPO 日期, 用于 active_mask(asof) 计算.

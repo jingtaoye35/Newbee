@@ -1,0 +1,81 @@
+"""AdjFactorService: 累积复权因子 full_init + daily_update.
+
+M1 简化: 由于 sina 源不直接给 adj_factor, 而东财源给 hfq 价, 我们用
+"close / close_post_adj" 的比值作为 adj_factor 写入. 这是一个 best-effort
+实现: 假设数据源给的 close_post_adj 已经是后复权, 且 close 是真实收盘价.
+"""
+from __future__ import annotations
+
+import logging
+from datetime import date
+from pathlib import Path
+
+import pandas as pd
+
+from newbee.datasource.registry import REGISTRY
+from newbee.datasource.service.universe import UniverseService
+from newbee.datasource.storage.io import DataFile
+from newbee.datasource.storage.state import StateTracker
+
+logger = logging.getLogger(__name__)
+
+
+class AdjFactorService:
+    """累积复权因子服务."""
+
+    def __init__(self, *, root: str | None = None) -> None:
+        self.root = Path(root) if root else None
+        self.dtype = REGISTRY.get("Adj_Factor")
+        self.file_ = DataFile(self.dtype, root=self.root) if root else DataFile(self.dtype)
+        if root:
+            self.state = StateTracker(Path(root) / "data" / "_Manifest" / "Data_State.json")
+        else:
+            self.state = StateTracker()
+        self.universe = UniverseService(root=str(self.root) if self.root else None)
+
+    def _infer_adj_from_kdata(self, kdata: pd.DataFrame) -> pd.DataFrame:
+        """adj_factor = close_post_adj / close (假设两者均非 0 / NaN).
+
+        返回 trading_date / stock_code / adj_factor (float64).
+        """
+        if kdata.empty:
+            return pd.DataFrame(columns=["trading_date", "stock_code", "adj_factor"])
+        df = kdata[["trading_date", "stock_code", "close", "close_post_adj"]].copy()
+        # 仅保留两者都有效
+        valid = df["close"].notna() & df["close_post_adj"].notna() & (df["close"] != 0)
+        df = df[valid].copy()
+        df["adj_factor"] = (df["close_post_adj"] / df["close"]).astype("float64")
+        return df[["trading_date", "stock_code", "adj_factor"]]
+
+    def full_init(self, *, start: str = "2020-01-01") -> dict[str, int]:
+        """从 KData 推算 adj_factor."""
+        kdata_dtype = REGISTRY.get("KData")
+        kdata_file = (
+            DataFile(kdata_dtype, root=self.root) if self.root else DataFile(kdata_dtype)
+        )
+        if not kdata_file.exists():
+            raise RuntimeError("data/KData.parquet 不存在; 请先跑 KDataService.full_init")
+
+        df = kdata_file.read()
+        df = df[df["trading_date"] >= start]
+        if df.empty:
+            logger.warning("[AdjFactor] KData 在 start 之后无数据, 跳过 full_init")
+            return {"rows": 0}
+
+        inferred = self._infer_adj_from_kdata(df)
+        if not inferred.empty:
+            self.file_.upsert(inferred, conflict="replace")
+
+        stats = self.file_.stats()
+        self.state.update("Adj_Factor", stats)
+        return {"rows": int(stats.row_count)}
+
+    def daily_update(self, *, today: date | None = None) -> dict[str, int]:
+        today_str = today.isoformat() if today else date.today().isoformat()
+        start, end = self.state.resume_range("Adj_Factor", latest=today_str)
+        if start > end:
+            return {"rows": int(self.file_.stats().row_count), "skipped": True}
+        return self.full_init(start=start)
+
+
+__all__ = ["AdjFactorService"]

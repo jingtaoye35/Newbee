@@ -1,0 +1,24 @@
+name: Adj_Factor
+description: 累积复权因子 (long format, float64 精度).
+schema_version: "1.0"
+frequency: daily
+storage: data/Adj_Factor.parquet
+primary_key:
+  - trading_date
+  - stock_code
+fields:
+  - name: trading_date
+    pyarrow: string
+    nullable: false
+    unit: YYYY-MM-DD
+    description: 交易日.
+  - name: stock_code
+    pyarrow: string
+    nullable: false
+    unit: 9-char .SH/.SZ
+    description: 9 字符股票代码.
+  - name: adj_factor
+    pyarrow: double
+    nullable: true
+    unit: ratio
+    description: 累积复权因子 (float64 精度, 防长 horizon 漂移).

@@ -53,6 +53,8 @@ docs/output/
 *.seed
 
 # Claude Code / OpenSpec 本地工作区 (不入仓库)
-.claude/
+.claude/hooks/
+.claude/settings*.json
+.claude/worktrees/
 CLAUDE.md
 openspec/

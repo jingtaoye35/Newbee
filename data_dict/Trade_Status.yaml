@@ -1,0 +1,34 @@
+name: Trade_Status
+description: 交易状态 (停牌/ST/活跃), long format.
+schema_version: "1.0"
+frequency: daily
+storage: data/Trade_Status.parquet
+primary_key:
+  - trading_date
+  - stock_code
+fields:
+  - name: trading_date
+    pyarrow: string
+    nullable: false
+    unit: YYYY-MM-DD
+    description: 交易日.
+  - name: stock_code
+    pyarrow: string
+    nullable: false
+    unit: 9-char .SH/.SZ
+    description: 9 字符股票代码.
+  - name: is_suspended
+    pyarrow: bool
+    nullable: false
+    unit: bool
+    description: True 当日停牌.
+  - name: is_st
+    pyarrow: bool
+    nullable: false
+    unit: bool
+    description: True 当日被 ST 标记.
+  - name: is_activate
+    pyarrow: bool
+    nullable: false
+    unit: bool
+    description: True 当日正常交易 (非停牌非 ST).
