@@ -123,8 +123,8 @@ REGISTRY = DataRegistry()
 def _register_defaults() -> None:
     """注册所有内置 DataType. 模块导入时调用一次."""
     from newbee.datasource.schemas import (
-        AdjFactor,
         KData,
+        StockBasicData,
         TradeStatus,
         Universe,
     )
@@ -151,15 +151,15 @@ def _register_defaults() -> None:
             pydantic_model=TradeStatus,
         )
     )
-    # Adj_Factor: daily
+    # Stock_Basic_Data: daily
     REGISTRY.register(
         DataType(
-            name="Adj_Factor",
+            name="Stock_Basic_Data",
             schema_version="1.0",
             frequency="daily",
-            storage_path=Path("data/Adj_Factor.parquet"),
+            storage_path=Path("data/Stock_Basic_Data.parquet"),
             primary_key=("trading_date", "stock_code"),
-            pydantic_model=AdjFactor,
+            pydantic_model=StockBasicData,
         )
     )
     # Universe: static

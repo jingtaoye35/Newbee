@@ -2,9 +2,9 @@
 
 设计要点:
 - 字段重命名: akshare 字段统一成内部契约 `trading_date`/`stock_code`/`open`/`high`/`low`/
-  `close`/`volume`/`amount`/`close_post_adj`
+  `close`/`volume`/`amount`/`close_adj`
 - stock_code 9 字符 .SH/.SZ 后缀 (Shanghai 6/9 开头, Shenzhen 0/3 开头)
-- close_post_adj 由 source 直接提供 (后复权), OHLCV 为 nullable float32
+- close_adj 由 source 直接提供 (后复权), OHLCV 为 nullable float32
 - 指数成分股: 返回 9 字符 stock_code 列表
 - 业务代码不直接 import akshare
 """
@@ -105,7 +105,7 @@ def _normalize_stock_hist(
     """归一化 akshare 输出到内部契约.
 
     输入可能是 stock_zh_a_daily (sina) 或 stock_zh_a_hist (东财), 字段名各异.
-    输出列: trading_date / stock_code / open / high / low / close / amount / volume / close_post_adj
+    输出列: trading_date / stock_code / open / high / low / close / amount / volume / close_adj
     """
     rename = {
         "日期": "trading_date",
@@ -139,16 +139,16 @@ def _normalize_stock_hist(
         else:
             df[col] = pd.Series([None] * len(df), dtype="float32")
 
-    # close_post_adj:
+    # close_adj:
     # - 东财 stock_zh_a_hist(adjust='hfq') 直接提供后复权收盘价
-    # - 新浪源没有 adj_close; 业务侧会在 Adj_Factor 上计算
-    # 默认 close_post_adj = close (无复权时), 业务调 full_init 时会覆盖
-    if "close_post_adj" in df.columns:
-        df["close_post_adj"] = pd.to_numeric(df["close_post_adj"], errors="coerce").astype("float32")
+    # - 新浪源没有 adj_close; 业务侧会在 Stock_Basic_Data 上计算
+    # 默认 close_adj = close (无复权时), 业务调 full_init 时会覆盖
+    if "close_adj" in df.columns:
+        df["close_adj"] = pd.to_numeric(df["close_adj"], errors="coerce").astype("float32")
     else:
-        df["close_post_adj"] = df["close"].astype("float32")
+        df["close_adj"] = df["close"].astype("float32")
 
-    out = df[["trading_date", "stock_code", "open", "high", "low", "close", "amount", "volume", "close_post_adj"]].copy()
+    out = df[["trading_date", "stock_code", "open", "high", "low", "close", "amount", "volume", "close_adj"]].copy()
     out = out.sort_values("trading_date").reset_index(drop=True)
     return out
 
@@ -173,11 +173,11 @@ def fetch_stock_hist(
 
     Returns:
         DataFrame columns: trading_date / stock_code / open / high / low / close /
-                          amount / volume / close_post_adj (全部 nullable float32).
+                          amount / volume / close_adj (全部 nullable float32).
 
     Note:
-        sina 源 close_post_adj == close (无 adj_factor); em 源 (adjust='hfq')
-        提供真实后复权; 业务层会在 Adj_Factor 上重新计算精确复权.
+        sina 源 close_adj == close (无 adj_factor); em 源 (adjust='hfq')
+        提供真实后复权; 业务层会在 Stock_Basic_Data 上重新计算精确复权.
     """
     # 归一化 stock_code
     if "." not in stock_code:

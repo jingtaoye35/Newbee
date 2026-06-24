@@ -1,8 +1,8 @@
-"""AdjFactorService: 累积复权因子 full_init + daily_update.
+"""StockBasicDataService: 股票基础数据 (复权因子 + 涨跌停价 + 申万行业) full_init + daily_update.
 
 M1 简化: 由于 sina 源不直接给 adj_factor, 而东财源给 hfq 价, 我们用
-"close / close_post_adj" 的比值作为 adj_factor 写入. 这是一个 best-effort
-实现: 假设数据源给的 close_post_adj 已经是后复权, 且 close 是真实收盘价.
+"close / close_adj" 的比值作为 adj_factor 写入. 这是一个 best-effort
+实现: 假设数据源给的 close_adj 已经是后复权, 且 close 是真实收盘价.
 """
 from __future__ import annotations
 
@@ -20,12 +20,12 @@ from newbee.datasource.storage.state import StateTracker
 logger = logging.getLogger(__name__)
 
 
-class AdjFactorService:
-    """累积复权因子服务."""
+class StockBasicDataService:
+    """股票基础数据服务 (复权因子 + 涨跌停价 + 申万行业)."""
 
     def __init__(self, *, root: str | None = None) -> None:
         self.root = Path(root) if root else None
-        self.dtype = REGISTRY.get("Adj_Factor")
+        self.dtype = REGISTRY.get("Stock_Basic_Data")
         self.file_ = DataFile(self.dtype, root=self.root) if root else DataFile(self.dtype)
         if root:
             self.state = StateTracker(Path(root) / "data" / "_Manifest" / "Data_State.json")
@@ -34,18 +34,31 @@ class AdjFactorService:
         self.universe = UniverseService(root=str(self.root) if self.root else None)
 
     def _infer_adj_from_kdata(self, kdata: pd.DataFrame) -> pd.DataFrame:
-        """adj_factor = close_post_adj / close (假设两者均非 0 / NaN).
+        """adj_factor = close_adj / close (假设两者均非 0 / NaN).
 
-        返回 trading_date / stock_code / adj_factor (float64).
+        返回 trading_date / stock_code / adj_factor / limit_upper_price / limit_lower_price /
+        sw_industry. 后三个字段 M1 阶段从 KData 无法推得, 填 None, 后续接入涨跌停/行业数据源
+        再回填.
         """
+        cols = [
+            "trading_date",
+            "stock_code",
+            "adj_factor",
+            "limit_upper_price",
+            "limit_lower_price",
+            "sw_industry",
+        ]
         if kdata.empty:
-            return pd.DataFrame(columns=["trading_date", "stock_code", "adj_factor"])
-        df = kdata[["trading_date", "stock_code", "close", "close_post_adj"]].copy()
+            return pd.DataFrame(columns=cols)
+        df = kdata[["trading_date", "stock_code", "close", "close_adj"]].copy()
         # 仅保留两者都有效
-        valid = df["close"].notna() & df["close_post_adj"].notna() & (df["close"] != 0)
+        valid = df["close"].notna() & df["close_adj"].notna() & (df["close"] != 0)
         df = df[valid].copy()
-        df["adj_factor"] = (df["close_post_adj"] / df["close"]).astype("float64")
-        return df[["trading_date", "stock_code", "adj_factor"]]
+        df["adj_factor"] = (df["close_adj"] / df["close"]).astype("float64")
+        df["limit_upper_price"] = None
+        df["limit_lower_price"] = None
+        df["sw_industry"] = None
+        return df[cols]
 
     def full_init(self, *, start: str = "2020-01-01") -> dict[str, int]:
         """从 KData 推算 adj_factor."""
@@ -59,7 +72,7 @@ class AdjFactorService:
         df = kdata_file.read()
         df = df[df["trading_date"] >= start]
         if df.empty:
-            logger.warning("[AdjFactor] KData 在 start 之后无数据, 跳过 full_init")
+            logger.warning("[StockBasicData] KData 在 start 之后无数据, 跳过 full_init")
             return {"rows": 0}
 
         inferred = self._infer_adj_from_kdata(df)
@@ -67,15 +80,15 @@ class AdjFactorService:
             self.file_.upsert(inferred, conflict="replace")
 
         stats = self.file_.stats()
-        self.state.update("Adj_Factor", stats)
+        self.state.update("Stock_Basic_Data", stats)
         return {"rows": int(stats.row_count)}
 
     def daily_update(self, *, today: date | None = None) -> dict[str, int]:
         today_str = today.isoformat() if today else date.today().isoformat()
-        start, end = self.state.resume_range("Adj_Factor", latest=today_str)
+        start, end = self.state.resume_range("Stock_Basic_Data", latest=today_str)
         if start > end:
             return {"rows": int(self.file_.stats().row_count), "skipped": True}
         return self.full_init(start=start)
 
 
-__all__ = ["AdjFactorService"]
+__all__ = ["StockBasicDataService"]

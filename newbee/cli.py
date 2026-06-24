@@ -298,7 +298,7 @@ def _build_parser() -> argparse.ArgumentParser:
                                  description="对每类数据计算 resume 区间, "
                                              "追加最新缺失日期.")
     p_du.add_argument("--type", default="KData",
-                      choices=["KData", "Trade_Status", "Adj_Factor", "Universe"],
+                      choices=["KData", "Trade_Status", "Stock_Basic_Data", "Universe"],
                       help="要更新的类型 (默认 KData)")
     p_du.add_argument("--data-root", type=Path, default=DEFAULT_DATA_ROOT,
                       help=f"data 根目录 (默认 {DEFAULT_DATA_ROOT})")

@@ -183,7 +183,7 @@ def test_state_tracker_via_data_file(tmp_path: Path) -> None:
             "close": [10.3, 20.3],
             "amount": [1e8, 2e8],
             "volume": [1e7, 2e7],
-            "close_post_adj": [10.3, 20.3],
+            "close_adj": [10.3, 20.3],
         }
     ))
     tracker.update("KData", df_obj.stats())

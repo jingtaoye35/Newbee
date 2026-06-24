@@ -33,7 +33,7 @@ def _fake_kdata_df(stock_code: str, dates: list[str]) -> pd.DataFrame:
             "close": [10.3] * len(dates),
             "amount": [1e7] * len(dates),
             "volume": [1e6] * len(dates),
-            "close_post_adj": [10.3] * len(dates),
+            "close_adj": [10.3] * len(dates),
         }
     )
 

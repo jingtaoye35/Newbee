@@ -2,8 +2,8 @@
 
 覆盖 spec/data-ingestion 的 ADDED Requirements:
 - 9 字符 stock_code 输入输出
-- long-format 列名 (trading_date / close_post_adj / 等)
-- 后复权: close_post_adj 列存在
+- long-format 列名 (trading_date / close_adj / 等)
+- 后复权: close_adj 列存在
 - 业务代码不直接 import akshare
 """
 from __future__ import annotations
@@ -79,7 +79,7 @@ def test_fetch_accepts_9char_stock_code() -> None:
 
 
 def test_fetch_output_columns() -> None:
-    """输出列必须包含 trading_date / stock_code / OHLCV / amount / volume / close_post_adj."""
+    """输出列必须包含 trading_date / stock_code / OHLCV / amount / volume / close_adj."""
     raw = _make_raw_sina_df("600000.SH", ["2024-01-02", "2024-01-03"])
     with patch.object(akshare_mod, "with_retry", side_effect=lambda fn, **kw: fn()):
         with patch("akshare.stock_zh_a_daily", return_value=raw):
@@ -93,7 +93,7 @@ def test_fetch_output_columns() -> None:
         "close",
         "amount",
         "volume",
-        "close_post_adj",
+        "close_adj",
     }
     assert set(df.columns) == expected
 
@@ -112,10 +112,10 @@ def test_fetch_ohlcv_nullable_float32() -> None:
     with patch.object(akshare_mod, "with_retry", side_effect=lambda fn, **kw: fn()):
         with patch("akshare.stock_zh_a_daily", return_value=raw):
             df = akshare_mod.fetch_stock_hist("600000", source="sina")
-    # sina 源 close_post_adj = close (无 adj_factor)
-    assert df.iloc[0]["close_post_adj"] == 10.5
+    # sina 源 close_adj = close (无 adj_factor)
+    assert df.iloc[0]["close_adj"] == 10.5
     # OHLCV 都应是 float32 (nullable)
-    for col in ("open", "high", "low", "close", "amount", "volume", "close_post_adj"):
+    for col in ("open", "high", "low", "close", "amount", "volume", "close_adj"):
         assert df[col].dtype == "float32", f"{col} dtype={df[col].dtype}"
 
 

@@ -64,11 +64,11 @@ def cmd_data_update(args: argparse.Namespace) -> int:
 
         result = TradeStatusService(root=str(root)).daily_update(today=date.today())
         print(f"Trade_Status update: {result}")
-    elif dtype.name == "Adj_Factor":
-        from newbee.datasource.service.adj_factor import AdjFactorService
+    elif dtype.name == "Stock_Basic_Data":
+        from newbee.datasource.service.stock_basic_data import StockBasicDataService
 
-        result = AdjFactorService(root=str(root)).daily_update(today=date.today())
-        print(f"Adj_Factor update: {result}")
+        result = StockBasicDataService(root=str(root)).daily_update(today=date.today())
+        print(f"Stock_Basic_Data update: {result}")
     elif dtype.name == "Universe":
         from newbee.datasource.service.universe import UniverseService
 
@@ -132,7 +132,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # update
     p_update = sub.add_parser("update", help="增量拉取")
-    p_update.add_argument("--type", default="KData", help="类型名 (KData / Trade_Status / Adj_Factor / Universe)")
+    p_update.add_argument("--type", default="KData", help="类型名 (KData / Trade_Status / Stock_Basic_Data / Universe)")
     p_update.add_argument("--source", default="sina", choices=["sina", "em", "tx"])
     p_update.add_argument("--index", default="csi1000", help="universe 指数名 (仅 Universe)")
     p_update.add_argument("--backdate", default="2020-01-01", help="backdate (仅 Universe)")

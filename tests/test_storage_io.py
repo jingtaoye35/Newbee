@@ -37,7 +37,7 @@ def _sample_kdata_rows() -> pd.DataFrame:
             "close": [10.3, 20.3, 10.8],
             "amount": [1e8, 2e8, 1.1e8],
             "volume": [1e7, 2e7, 1.1e7],
-            "close_post_adj": [10.3, 20.3, 10.8],
+            "close_adj": [10.3, 20.3, 10.8],
         }
     )
 
@@ -129,7 +129,7 @@ def test_append_raises_on_conflict(kdata_file: DataFile) -> None:
             "close": [11.3],
             "amount": [1.2e8],
             "volume": [1.2e7],
-            "close_post_adj": [11.3],
+            "close_adj": [11.3],
         }
     )
     with pytest.raises(PrimaryKeyConflictError):
@@ -151,7 +151,7 @@ def test_upsert_replace(kdata_file: DataFile) -> None:
             "close": [99.0],
             "amount": [1.0],
             "volume": [1.0],
-            "close_post_adj": [99.0],
+            "close_adj": [99.0],
         }
     )
     kdata_file.upsert(df_new, conflict="replace")
@@ -172,7 +172,7 @@ def test_upsert_ignore(kdata_file: DataFile) -> None:
             "close": [99.0],
             "amount": [1.0],
             "volume": [1.0],
-            "close_post_adj": [99.0],
+            "close_adj": [99.0],
         }
     )
     kdata_file.upsert(df_new, conflict="ignore")
@@ -193,7 +193,7 @@ def test_upsert_error(kdata_file: DataFile) -> None:
             "close": [99.0],
             "amount": [1.0],
             "volume": [1.0],
-            "close_post_adj": [99.0],
+            "close_adj": [99.0],
         }
     )
     with pytest.raises(PrimaryKeyConflictError):
