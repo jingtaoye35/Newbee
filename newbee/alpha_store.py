@@ -26,7 +26,7 @@ from typing import Any
 
 import numpy as np
 
-from newbee.data.universe import StockPool
+from newbee.datasource.storage.pool_adapter import StockPool
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +67,8 @@ def _npy_path(strategy_id: str, asof: date, root: Path = DEFAULT_DATA_ROOT) -> P
 
 
 def _universe_sha(pool: StockPool) -> str:
-    import hashlib
-
-    ids = sorted(pool.export()["stock_id"].tolist())
-    payload = "|".join(ids).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()[:16]
+    """委托给 StockPool.universe_sha() (新 datasource 实现的 hash 路径)."""
+    return pool.universe_sha()
 
 
 # ---------- 核心 API ----------

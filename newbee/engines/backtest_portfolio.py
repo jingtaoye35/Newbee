@@ -27,9 +27,9 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
-from newbee.data.calendar import align_to_trading_day, sessions_between
-from newbee.data.storage import Bars, load_bars_from_parquet
-from newbee.data.universe import StockPool
+from newbee.datasource.calendar import align_to_trading_day, sessions_between
+from newbee.datasource.storage.bars_adapter import Bars, load_bars as load_bars_from_parquet
+from newbee.datasource.storage.pool_adapter import StockPool
 from newbee.portfolio import (
     CostModel,
     LongOnly,

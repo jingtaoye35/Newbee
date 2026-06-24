@@ -35,5 +35,15 @@ fields:
   - name: sw_industry
     pyarrow: string
     nullable: true
-    unit: 
+    unit:
     description: 申万一级行业.
+  - name: outstanding_share
+    pyarrow: double
+    nullable: true
+    unit: shares
+    description: 总股本 (流通股 + 非流通股).
+  - name: turnover
+    pyarrow: double
+    nullable: true
+    unit: ratio
+    description: 日换手率 (volume / outstanding_share).

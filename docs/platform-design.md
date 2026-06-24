@@ -1,7 +1,6 @@
 # Newbee Platform Architecture Design
 
 > **Scope**: any modification to `newbee/`, `configs/`, `scripts/`, `docs/*.py`.
-> **Replaces** (consolidated 2026-06-24): the former `docs/data-architecture.md`, whose full content now lives in §10 of this file.
 
 ## 0. Document Metadata
 
@@ -98,9 +97,9 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 | `registry.py` | `DataType` + `DataRegistry` (frozen dataclass + singleton) |
 | `codegen.py` | YAML → Pydantic + Markdown |
 | `calendar.py` | Trading-day calendar (wrapper around `exchange_calendars`) |
-| `cli.py` | `newbee data` subcommands (status / update / init-universe / codegen / verify) |
+| `cli.py` | `newbee data` subcommands (status / update / init-universe / codegen / verify ) |
 | `schemas/*.py` | Pydantic `BaseModel` (codegen output — **must not be hand-edited**) |
-| `storage/io.py` | `DataFile` physical I/O (predicate pushdown, atomic write) |
+| `storage/io.py` | `DataFile` physical I/O (predicate pushdown, atomic write; parquet + CSV backends) |
 | `storage/state.py` | `StateTracker` persistence for `Data_State.json` |
 | `storage/errors.py` | Error hierarchy (`SchemaVersionError`, `PrimaryKeyConflictError`, ...) |
 | `sources/akshare.py` | Source adapter (`sina` / `em` / `tx`) |
@@ -190,18 +189,35 @@ newbee (CLI entry, registered in pyproject.toml)
   ├── newbee backtest <config>        # Portfolio backtest
   ├── newbee alpha   <config>         # Alpha backtest
   └── newbee data    <sub>            # Data subcommands (forwards to newbee.datasource.cli)
-        ├── status                    # Coverage state
-        ├── update [--type]           # Incremental fetch
-        ├── init-universe             # Initialize stock pool
-        ├── codegen                   # Re-run codegen
-        └── verify                    # Run dict_sync + storage_io + state_tracker tests
+        ├── status                          # Coverage state
+        ├── update [--type]                 # Incremental fetch
+        ├── init-universe                   # Initialize stock pool
+        ├── codegen                         # Re-run codegen
+        └── verify                          # Run dict_sync + storage_io + state_tracker tests
 ```
 
-`scripts/*.py` (`init_universe.py`, `fetch_data.py`, `run_*_backtest.py`) are legacy entry points; their functionality is fully covered by `newbee <cmd>`. They are **retained as documentation examples only**.
+`scripts/*.py` (`init_universe.py`, `fetch_data.py`, `fetch_incremental.py`, `run_alpha_backtest.py`, `run_portfolio_backtest.py`) are thin wrappers around `newbee.cli` or `newbee.datasource.cli`. They are kept for cron / Makefile convenience but their functionality is fully covered by the `newbee` CLI.
 
-### 4.7 Compatibility Layer — `newbee/data/` (DEPRECATED)
+### 4.7 Adapter Layer — `newbee/datasource/storage/{bars_adapter,pool_adapter}.py`
 
-The legacy data module (`newbee/data/universe.py`, `storage.py`, `pit.py`, ...). Migration to `newbee.datasource.*` is complete; imports trigger `DeprecationWarning`, full removal at M3. See [`docs/release-notes-data-refactor.md`](release-notes-data-refactor.md) for the symbol-by-symbol mapping.
+矩阵化封装, 让 `engines/backtest_*` 和 `cli` 用熟悉的 `(T, N)` 视角读数据,
+而物理存储仍是 `data/<Type>.parquet` (long format):
+
+- `bars_adapter.load_bars(stock_codes, start, end, *, root, kind="adj")` →
+  `Bars(dates, stock_ids, open, high, low, close, volume, adj_close)` (T, N matrices)
+  - `root` 是 `PROJECT_ROOT` (data/ 在其下); 内部走 `DataFile(KData).read`
+    + `pandas.pivot` 出矩阵
+  - `kind="adj"` → `adj_close = close_adj`; `kind="raw"` → `adj_close = close`
+  - `Bars.matrix` 属性: (T, N, 6) 堆叠 [open, high, low, close, volume, adj_close],
+    供 `bars.matrix[:, :, 5]` 单切片
+  - `Bars.returns(kind)` 默认 `simple`, 第一行强制 NaN (无前一天)
+
+- `pool_adapter.StockPool.load(path)` → `StockPool` 提供 legacy `newbee.data.universe.StockPool` API
+  - `stock_ids` (list of 9-char stock_code), `size()`, `export()` (含 stock_code 列),
+    `active_mask(asof)` (基于 ipo_date), `idx_of()` / `stock_of()`, `add()` (幂等), `universe_sha()`
+  - 物理存储仍走 `DataFile(Universe)` (append-only, schema_version 校验)
+
+注意: `stock_code` 已统一为 9 字符 `.SH/.SZ` 格式, 不再用 6 位 `stock_id`.
 
 ## 5. Data Flow (Typical Scenarios)
 
@@ -296,7 +312,7 @@ start_s, end_s = resolve_data_range(cfg)  # → (start, end)
 | `test_latest_trading_day.py` | Data layer | `latest_trading_day` derivation |
 | `test_logger.py` | Utility layer | Logger proxy + format + `propagate` |
 | `test_new_stock_alignment.py` | Data layer | New-stock alignment to IPO date |
-| **Total** | — | 169 / 169 passing (see release notes) |
+| **Total** | — | 207 / 207 passing |
 
 ### 7.2 Test Commands
 
@@ -493,8 +509,8 @@ docs/data_dict/KData.md               ← human-readable dictionary (auto-genera
 | `high` | float32 | CNY | Y | High price (unadjusted) |
 | `low` | float32 | CNY | Y | Low price (unadjusted) |
 | `close` | float32 | CNY | Y | Close price (unadjusted) |
-| `amount` | float32 | CNY | Y | Turnover (CNY) |
-| `volume` | float32 | shares | Y | Trading volume (shares) |
+| `amount` | float64 | CNY | Y | Turnover (CNY; float64 to preserve precision over large turnover) |
+| `volume` | float64 | shares | Y | Trading volume (shares; float64 to avoid long-horizon overflow) |
 | `close_adj` | float32 | CNY | Y | Post-adjusted close price |
 
 Primary key: `(trading_date, stock_code)`.
@@ -519,9 +535,12 @@ Primary key: `(trading_date, stock_code)`.
 |---|---|---|---|
 | `trading_date` | string | N | 10-char ISO date |
 | `stock_code` | string | N | 9-char code |
-| `adj_factor` | float64 | N | Adjustment factor |
-
-Convention: `close_adj = close * adj_factor` (documented in the YAML dictionary to avoid ambiguity). `adj_factor` is preserved as **float64** to prevent precision loss over long horizons.
+| `adj_factor` | float64 | Y | Adjustment factor `= KData.close_adj / KData.close`; populated by `newbee data populate-stock-basic-adj`; `None` for stocks with no `close_adj` (e.g. `600000.SH`) |
+| `limit_upper_price` | float32 | Y | 涨停价 (nullable; future data source) |
+| `limit_lower_price` | float32 | Y | 跌停价 (nullable; future data source) |
+| `sw_industry` | string | Y | 申万一级行业 (nullable; future data source) |
+| `outstanding_share` | float64 | Y | 总股本 (流通股 + 非流通股) |
+| `turnover` | float64 | Y | 日换手率 `volume / outstanding_share` |
 
 Primary key: `(trading_date, stock_code)`.
 
@@ -975,7 +994,7 @@ print(f"upserted {n} rows into PIT")
 - The legacy `data/_manifest/fetch_state.json` is no longer written; new code writes only `Data_State.json`.
 - The legacy `data/universe/pool.parquet` is deleted by a human operator once the new `Universe.parquet` is fully generated.
 - Legacy subdirectories `data/pit/`, `data/features/`, `data/alpha/` follow the same rule.
-- The legacy Python package `newbee/data/` stops being imported after `newbee/datasource/` ships; one version later a human operator runs `rm -rf`.
+- The legacy Python package `newbee/data/` has been removed in M3 — all consumers (cli, alpha_store, engines, scripts) migrated to `newbee.datasource.*` directly. `newbee/datasource/storage/{bars_adapter,pool_adapter}.py` provide the legacy `Bars` / `StockPool` thin shims for engines.
 
 ## 11. AI Collaboration SOP (Claude Code)
 
@@ -1040,7 +1059,7 @@ print(f"upserted {n} rows into PIT")
 | No T+1 / price-limit handling | Required for paper / live trading; M2+. | ⏳ M2+ |
 | Factor is classic momentum; no ML | On the M3+ roadmap. | ⏳ M3+ |
 | Cross-machine concurrency **not supported** | Data module is single-machine by design; cross-machine needs distributed storage (future work). | Documented |
-| `close_adj` requires source to provide both `close` and `adj_factor` | `Stock_Basic_Data` is derived as `close_adj / close`; missing source data means missing rows. | Known limit |
+| `close_adj` requires source to provide both `close` and `adj_factor` | `Stock_Basic_Data.adj_factor` is derived offline as `KData.close_adj / KData.close` via `newbee data populate-stock-basic-adj`; missing `close_adj` (e.g. `600000.SH`) keeps `adj_factor = None`. | ✅ resolved by `populate-stock-basic-adj` |
 | `PITStore` not yet migrated to the new data layer | Will be addressed when financial data is redone in M3. | ⏳ M3+ |
 
 ## 13. Roadmap

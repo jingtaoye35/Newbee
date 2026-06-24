@@ -16,6 +16,8 @@ class StockBasicData(BaseModel):
     limit_upper_price: float | None  # CNY — 涨停价 (nullable).
     limit_lower_price: float | None  # CNY — 跌停价 (nullable).
     sw_industry: str | None  # None — 申万一级行业.
+    outstanding_share: float | None  # shares — 总股本 (流通股 + 非流通股).
+    turnover: float | None  # ratio — 日换手率 (volume / outstanding_share).
 
     @field_validator("stock_code")
     @classmethod

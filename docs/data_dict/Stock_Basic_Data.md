@@ -17,6 +17,8 @@
 | `limit_upper_price` | `float` (float) | ✓ | CNY | 涨停价 (nullable). |
 | `limit_lower_price` | `float` (float) | ✓ | CNY | 跌停价 (nullable). |
 | `sw_industry` | `string` (str) | ✓ | None | 申万一级行业. |
+| `outstanding_share` | `double` (float) | ✓ | shares | 总股本 (流通股 + 非流通股). |
+| `turnover` | `double` (float) | ✓ | ratio | 日换手率 (volume / outstanding_share). |
 
 ## Notes
 

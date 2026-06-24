@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 def cmd_alpha(args: argparse.Namespace) -> int:
     """Alpha 回测 (IC / RankIC / decile)."""
     from newbee import alpha_store
-    from newbee.data.storage import load_bars_from_parquet
-    from newbee.data.universe import StockPool
+    from newbee.datasource.storage.bars_adapter import load_bars
+    from newbee.datasource.storage.pool_adapter import StockPool
     from newbee.engines.backtest_alpha import (
         forward_returns_from_prices,
         run_alpha_backtest_from_store,
@@ -49,15 +49,15 @@ def cmd_alpha(args: argparse.Namespace) -> int:
 
     # 数据
     pool = StockPool.load(args.universe)
-    stock_ids = pool.export()["stock_id"].tolist()
+    stock_ids = pool.export()["stock_code"].tolist()
     print(f"Pool: {pool.size()} stocks")
 
     start_s, end_s = resolve_data_range(cfg)
     start = date.fromisoformat(start_s)
     end = date.fromisoformat(end_s)
-    # data_root 形如 data/adj, load_bars_from_parquet 需要的是 data 根目录 (kind 决定子目录)
-    bars = load_bars_from_parquet(
-        stock_ids=stock_ids,
+    # KData 在 args.data_root 之下 (data/KData.parquet)
+    bars = load_bars(
+        stock_codes=stock_ids,
         start=start, end=end,
         kind="adj",
         root=args.data_root.parent,
@@ -110,8 +110,8 @@ def cmd_alpha(args: argparse.Namespace) -> int:
 def cmd_backtest(args: argparse.Namespace) -> int:
     """组合回测 (Phase B)."""
     from newbee import alpha_store
-    from newbee.data.storage import load_bars_from_parquet
-    from newbee.data.universe import StockPool
+    from newbee.datasource.storage.bars_adapter import load_bars
+    from newbee.datasource.storage.pool_adapter import StockPool
     from newbee.engines.backtest_portfolio import run_portfolio_backtest
     from newbee.factors.classic.momentum import momentum_20, momentum_60, rev_5
     from newbee.factors.pipeline import compute_factor_panel
@@ -129,12 +129,12 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     print(f"Strategy id: {sid}")
 
     pool = StockPool.load(args.universe)
-    stock_ids = pool.export()["stock_id"].tolist()
+    stock_ids = pool.export()["stock_code"].tolist()
     start_s, end_s = resolve_data_range(cfg)
     start = date.fromisoformat(start_s)
     end = date.fromisoformat(end_s)
-    bars = load_bars_from_parquet(
-        stock_ids=stock_ids,
+    bars = load_bars(
+        stock_codes=stock_ids,
         start=start, end=end,
         kind="adj",
         root=args.data_root.parent,

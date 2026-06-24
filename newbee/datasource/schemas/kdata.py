@@ -16,8 +16,8 @@ class KData(BaseModel):
     high: float | None  # CNY — 最高价 (nullable).
     low: float | None  # CNY — 最低价 (nullable).
     close: float | None  # CNY — 收盘价 (nullable).
-    amount: float | None  # CNY — 成交额 (nullable).
-    volume: float | None  # shares — 成交量 (nullable).
+    amount: float | None  # CNY — 成交额 (nullable, float64 — 高精度以支撑大额成交累积).
+    volume: float | None  # shares — 成交量 (nullable, float64 — 避免长 horizon 累积溢出).
     close_adj: float | None  # CNY — 后复权收盘价 = close * adj_factor (post-adjusted).
 
     @field_validator("stock_code")

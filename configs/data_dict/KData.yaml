@@ -38,15 +38,15 @@ fields:
     unit: CNY
     description: 收盘价 (nullable).
   - name: amount
-    pyarrow: float
+    pyarrow: double
     nullable: true
     unit: CNY
-    description: 成交额 (nullable).
+    description: 成交额 (nullable, float64 — 高精度以支撑大额成交累积).
   - name: volume
-    pyarrow: float
+    pyarrow: double
     nullable: true
     unit: shares
-    description: 成交量 (nullable).
+    description: 成交量 (nullable, float64 — 避免长 horizon 累积溢出).
   - name: close_adj
     pyarrow: float
     nullable: true
