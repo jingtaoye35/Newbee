@@ -73,6 +73,7 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
                                 │  data/Trade_Status.parquet   │
                                 │  data/Stock_Basic_Data.parquet     │
                                 │  data/Universe.parquet       │
+                                │  data/Trading_Date.csv       │
                                 │  data/_Manifest/Data_State.json│
                                 │  data/alpha/<sid>/{date}.npy │
                                 │  data/portfolio/results/*.parquet│
@@ -363,6 +364,7 @@ data/
 ├── Trade_Status.parquet       # Trading status (suspended / ST / activate)
 ├── Stock_Basic_Data.parquet         # Adjustment factor
 ├── Universe.parquet           # Stock pool
+├── Trading_Date.csv           # Trading-day calendar (CSV; reference data)
 ├── PIT.parquet                # Financial disclosures
 │
 ├── Features/                  # npy matrix, kept as-is
@@ -388,6 +390,7 @@ configs/data_dict/
 ├── Trade_Status.yaml
 ├── Stock_Basic_Data.yaml
 ├── Universe.yaml
+├── Trading_Date.yaml
 ├── PIT.yaml
 └── Features_Alpha.yaml
 ```
@@ -402,6 +405,7 @@ docs/data_dict/
 ├── Trade_Status.md
 ├── Stock_Basic_Data.md
 ├── Universe.md
+├── Trading_Date.md
 ├── PIT.md
 └── Features_Alpha.md
 ```
@@ -417,14 +421,15 @@ newbee/datasource/
 │   ├── kdata_m1.py
 │   ├── kdata_m5.py
 │   ├── trade_status.py
-│   ├── adj_factor.py
+│   ├── stock_basic_data.py
 │   ├── universe.py
+│   ├── trading_date.py
 │   ├── pit.py
 │   └── features_alpha.py
 ├── codegen.py                 # YAML → Pydantic → Markdown
 ├── registry.py                # DataRegistry
 ├── storage/
-│   ├── io.py                  # DataFile (read / upsert / append / stats)
+│   ├── io.py                  # DataFile (read / upsert / append / stats; parquet + CSV)
 │   └── state.py               # StateTracker
 ├── sources/akshare.py         # Source adapter
 ├── incremental.py             # Incremental update orchestrator
@@ -530,6 +535,25 @@ Primary key: `(trading_date, stock_code)`.
 
 `active_mask(asof)` derivation: a stock is considered "listed at `asof`" iff `asof >= ipo_date`. Delisted stocks remain in `Universe`; rows are append-only, never deleted.
 
+#### 10.5.5 Trading_Date
+
+| Field | Type | Nullable | Meaning |
+|---|---|---|---|
+| `trading_date` | string | N | 10-char ISO date, e.g. `2024-01-02` |
+
+Primary key: `("trading_date",)`. `frequency = "static"` (the calendar is a reference dataset, not a per-bar observation). The on-disk file is `data/Trading_Date.csv` (CSV format — see §10.5.6). No `Service` or CLI subcommand is shipped for `Trading_Date`; the CSV is expected to be populated by ad-hoc scripts or a follow-up change.
+
+#### 10.5.6 Format Convention
+
+Every data type's YAML MAY declare a `format` field. The value is one of:
+
+| `format` | On-disk file | I/O backend | Use case |
+|---|---|---|---|
+| `parquet` (default) | `data/<Type>.parquet` | `pyarrow.parquet` (predicate pushdown, metadata scan) | All observation-shaped data (OHLCV, status, PIT, ...) |
+| `csv` | `data/<Type>.csv` | `pandas.read_csv` / `DataFrame.to_csv` (in-memory filtering) | Small reference data (calendars, lookup tables — typically ≤ 1 MB) |
+
+The `DataFile` class branches on `dtype.format`: parquet types use `pyarrow` exclusively; CSV types use `pandas` exclusively. The two backends are not mixed within a single method. CSV-backed types are intentionally small enough to load fully on every read; the system does not enforce a size limit at runtime (the `format: csv` declaration is the contract that the file is small by construction). See `openspec/specs/data-file-io/spec.md` for the full behavioural contract.
+
 ### 10.6 State Tracking — `data/_Manifest/Data_State.json`
 
 Replaces the legacy `fetch_state.json`, per-type granularity, carrying `schema_version`:
@@ -567,15 +591,16 @@ Replaces the legacy `fetch_state.json`, per-type granularity, carrying `schema_v
 class DataType:
     """Immutable metadata for a single data type. Frozen guarantees no post-registration mutation."""
 
-    name: str                          # "KData" / "Stock_Basic_Data"
+    name: str                          # "KData" / "Stock_Basic_Data" / "Trading_Date"
     schema_version: str                # "1.0"
-    frequency: str                     # "daily" | "1min" | "5min" | ...
-    storage_path: Path                 # data/KData.parquet
-    primary_key: tuple[str, ...]       # ("trading_date", "stock_code")
-    pydantic_model: type[BaseModel]    # KData / Stock_Basic_Data / ...
+    frequency: str                     # "daily" | "1min" | "5min" | "static" | ...
+    format: str                        # "parquet" (default) | "csv"
+    storage_path: Path                 # data/KData.parquet / data/Trading_Date.csv
+    primary_key: tuple[str, ...]       # ("trading_date", "stock_code") or ("trading_date",)
+    pydantic_model: type[BaseModel]    # KData / Stock_Basic_Data / TradingDate / ...
 
     def __post_init__(self) -> None:
-        """Validate name uniqueness, Pascal_Snake_Case compliance, etc."""
+        """Validate name uniqueness, Pascal_Snake_Case compliance, and `format` ∈ {"parquet", "csv"}."""
         ...
 
 class DataRegistry:
@@ -591,8 +616,9 @@ REGISTRY = DataRegistry()
 REGISTRY.register(KDATA)
 REGISTRY.register(KDATA_M1)
 REGISTRY.register(TRADE_STATUS)
-REGISTRY.register(ADJ_FACTOR)
+REGISTRY.register(STOCK_BASIC_DATA)
 REGISTRY.register(UNIVERSE)
+REGISTRY.register(TRADING_DATE)  # format="csv"
 ```
 
 **Usage**:
@@ -685,6 +711,7 @@ def read(
 - `append` / `upsert`: Pydantic validates every row first, then `tempfile + os.replace` for atomic write. The `fcntl` file lock prevents concurrent writes.
 - `stats`: zero-IO via `pyarrow.parquet` metadata; first/last date and stock count are computed with single-column reads when the file is non-empty.
 - `read`: predicate pushdown happens at the pyarrow filter level, not in pandas.
+- **Format branch**: when `dtype.format == "csv"`, `read` calls `pd.read_csv(self.path, usecols=columns)` and applies `start`/`end`/`stock_codes` filters in pandas (no pushdown is possible or necessary for CSV because CSV-backed types are small by construction); `append` / `upsert` use `df.to_csv(self.path, index=False)` via tempfile + os.replace; `stats` loads the file once via `pd.read_csv` and computes `first_date` / `last_date` / `row_count` / `stock_count` from the resulting DataFrame; `truncate` is format-agnostic. The parquet path stays byte-identical for non-CSV types. See §10.5.6 for when to declare `format: csv`.
 
 **Usage**:
 

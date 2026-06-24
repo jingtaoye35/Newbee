@@ -15,6 +15,7 @@ from pydantic import BaseModel
 # ---------- Pascal_Snake_Case 校验 ----------
 
 _PASCAL_SNAKE_RE = re.compile(r"^([A-Z][A-Za-z0-9]*)(_[A-Z][A-Za-z0-9]*)*$")
+_ALLOWED_FORMATS: frozenset[str] = frozenset({"parquet", "csv"})
 
 
 def _assert_pascal_snake_case(value: str, where: str) -> None:
@@ -36,7 +37,8 @@ class DataType:
         name: Pascal_Snake_Case 类型名 (e.g. "KData", "Trade_Status").
         schema_version: semver 字符串, 与 Data_State.json 中的 schema_version 一致时才能读取.
         frequency: 频率 ("daily" / "1min" / "5min" / "static").
-        storage_path: parquet 物理路径, 相对于项目根.
+        format: 存储格式 ("parquet" 默认 / "csv"). 决定 DataFile 的 I/O 后端.
+        storage_path: 物理路径 (相对项目根). .parquet / .csv 等.
         primary_key: 字段名 tuple, 用于 append/upsert 冲突检测.
         pydantic_model: 校验 / 反序列化的 BaseModel 类.
     """
@@ -47,12 +49,17 @@ class DataType:
     storage_path: Path
     primary_key: tuple[str, ...]
     pydantic_model: type[BaseModel]
+    format: str = "parquet"
 
     def __post_init__(self) -> None:
         _assert_pascal_snake_case(self.name, f"DataType.name")
-        # storage_path 也必须是 Pascal_Snake_Case 文件名 (不带 .parquet)
+        # storage_path 也必须是 Pascal_Snake_Case 文件名 (不带扩展名)
         stem = self.storage_path.stem
         _assert_pascal_snake_case(stem, f"DataType.storage_path.stem")
+        if self.format not in _ALLOWED_FORMATS:
+            raise ValueError(
+                f"DataType.format 必须是 {_ALLOWED_FORMATS!r} 之一, 得到 {self.format!r}"
+            )
         if not isinstance(self.primary_key, tuple):
             object.__setattr__(self, "primary_key", tuple(self.primary_key))
 
@@ -126,6 +133,7 @@ def _register_defaults() -> None:
         KData,
         StockBasicData,
         TradeStatus,
+        TradingDate,
         Universe,
     )
 
@@ -171,6 +179,18 @@ def _register_defaults() -> None:
             storage_path=Path("data/Universe.parquet"),
             primary_key=("stock_index",),
             pydantic_model=Universe,
+        )
+    )
+    # Trading_Date: static, CSV-backed single-column reference data
+    REGISTRY.register(
+        DataType(
+            name="Trading_Date",
+            schema_version="1.0",
+            frequency="static",
+            storage_path=Path("data/Trading_Date.csv"),
+            primary_key=("trading_date",),
+            pydantic_model=TradingDate,
+            format="csv",
         )
     )
 

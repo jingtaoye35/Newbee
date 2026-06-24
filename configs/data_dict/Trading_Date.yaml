@@ -1,0 +1,13 @@
+name: Trading_Date
+description: A 股交易日历 (single-column reference data, CSV-backed).
+schema_version: "1.0"
+frequency: static
+storage: data/Trading_Date.csv
+primary_key:
+  - trading_date
+fields:
+  - name: trading_date
+    pyarrow: string
+    nullable: false
+    unit: YYYY-MM-DD
+    description: 实际交易日 (ISO YYYY-MM-DD), 例如 2024-01-02.

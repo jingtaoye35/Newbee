@@ -6,7 +6,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from newbee.datasource.registry import REGISTRY
+from newbee.datasource.registry import REGISTRY, DataType
+from newbee.datasource.schemas import TradingDate
 from newbee.datasource.storage.errors import (
     PrimaryKeyConflictError,
     SchemaValidationError,
@@ -261,3 +262,117 @@ def test_schema_version_mismatch_raises(kdata_file: DataFile, tmp_root: Path) ->
 
     with pytest.raises(SchemaVersionError):
         kdata_file.read()
+
+
+# ---------- CSV-backed DataFile (format="csv") ----------
+
+
+def _make_csv_dtype(tmp_root: Path) -> DataType:
+    """构造一个 CSV 格式的 Trading_Date DataType, 路径指向 tmp_root."""
+    return DataType(
+        name="Trading_Date",
+        schema_version="1.0",
+        frequency="static",
+        storage_path=Path("data/Trading_Date.csv"),
+        primary_key=("trading_date",),
+        pydantic_model=TradingDate,
+        format="csv",
+    )
+
+
+@pytest.fixture
+def trading_date_file(tmp_root: Path) -> DataFile:
+    return DataFile(_make_csv_dtype(tmp_root), root=tmp_root)
+
+
+def test_storage_io_csv_branch(trading_date_file: DataFile) -> None:
+    """append 写 3 行 → read 读回 → upsert replace → truncate."""
+    assert not trading_date_file.exists()
+
+    df1 = pd.DataFrame({"trading_date": ["2024-01-02", "2024-01-03", "2024-01-04"]})
+    n = trading_date_file.append(df1)
+    assert n == 3
+    assert trading_date_file.exists()
+
+    out = trading_date_file.read()
+    assert list(out.columns) == ["trading_date"]
+    assert out["trading_date"].tolist() == ["2024-01-02", "2024-01-03", "2024-01-04"]
+
+    # upsert replace: 覆盖 2024-01-02 (same value, just demonstrating replace path), 新增 2024-01-05
+    df2 = pd.DataFrame({"trading_date": ["2024-01-02", "2024-01-05"]})
+    n2 = trading_date_file.upsert(df2, conflict="replace")
+    # n2 is the post-merge file row count (3 kept + 1 new = 4)
+    assert n2 == 4
+    out2 = trading_date_file.read()
+    assert out2["trading_date"].tolist() == [
+        "2024-01-02",
+        "2024-01-03",
+        "2024-01-04",
+        "2024-01-05",
+    ]
+
+    # truncate
+    trading_date_file.truncate()
+    assert not trading_date_file.exists()
+
+
+def test_storage_io_csv_read_filters(trading_date_file: DataFile) -> None:
+    """写跨两年 5 行, read(start, end) 只返回范围内行."""
+    df = pd.DataFrame(
+        {
+            "trading_date": [
+                "2023-12-29",
+                "2024-01-02",
+                "2024-06-15",
+                "2024-06-30",
+                "2025-01-02",
+            ]
+        }
+    )
+    trading_date_file.append(df)
+
+    out = trading_date_file.read(start="2024-06-01", end="2024-06-30")
+    assert out["trading_date"].tolist() == ["2024-06-15", "2024-06-30"]
+
+
+def test_storage_io_csv_missing_file(trading_date_file: DataFile) -> None:
+    """不存在的 CSV 文件 read 抛 FileNotFoundError."""
+    assert not trading_date_file.exists()
+    with pytest.raises(FileNotFoundError):
+        trading_date_file.read()
+
+
+def test_storage_io_csv_append_conflict(trading_date_file: DataFile) -> None:
+    """CSV append 重复主键抛 PrimaryKeyConflictError."""
+    df1 = pd.DataFrame({"trading_date": ["2024-01-02", "2024-01-03"]})
+    trading_date_file.append(df1)
+    df2 = pd.DataFrame({"trading_date": ["2024-01-03"]})
+    with pytest.raises(PrimaryKeyConflictError):
+        trading_date_file.append(df2)
+
+
+def test_storage_io_csv_format_default_is_parquet() -> None:
+    """DataType() 默认 format='parquet'."""
+    dt = DataType(
+        name="KData",
+        schema_version="1.0",
+        frequency="daily",
+        storage_path=Path("data/KData.parquet"),
+        primary_key=("trading_date", "stock_code"),
+        pydantic_model=TradingDate,  # any BaseModel subclass; just need a type
+    )
+    assert dt.format == "parquet"
+
+
+def test_storage_io_csv_format_invalid_raises() -> None:
+    """format='feather' 不是合法值, DataType.__post_init__ 抛 ValueError."""
+    with pytest.raises(ValueError, match="format"):
+        DataType(
+            name="KData",
+            schema_version="1.0",
+            frequency="daily",
+            storage_path=Path("data/KData.parquet"),
+            primary_key=("trading_date", "stock_code"),
+            pydantic_model=TradingDate,
+            format="feather",
+        )

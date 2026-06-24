@@ -79,6 +79,7 @@ class DataFile:
         self.dtype = dtype
         root = root if root is not None else PROJECT_ROOT
         self.path: Path = root / dtype.storage_path
+        self._is_csv: bool = dtype.format == "csv"
 
     # ---------- 存在性 ----------
 
@@ -95,44 +96,60 @@ class DataFile:
         stock_codes: list[str] | None = None,
         columns: list[str] | None = None,
     ) -> pd.DataFrame:
-        """读 parquet, 过滤后返回 pandas.DataFrame.
+        """读 parquet 或 csv, 过滤后返回 pandas.DataFrame.
+
+        parquet: pyarrow + filter pushdown (start/end/stock_codes).
+        csv:     pd.read_csv + in-memory pandas filter (intended for small reference data).
 
         Raises:
             FileNotFoundError: 文件不存在.
-            SchemaVersionError: Data_State.json 中的 schema_version 与 dtype 不一致.
+            SchemaVersionError: Data_State.json 中的 schema_version 与 dtype 不一致 (parquet only).
             SchemaValidationError: 校验失败.
         """
         if not self.path.exists():
-            raise FileNotFoundError(f"{self.dtype.name}: parquet 文件不存在: {self.path}")
+            label = "csv" if self._is_csv else "parquet"
+            raise FileNotFoundError(
+                f"{self.dtype.name}: {label} 文件不存在: {self.path}"
+            )
 
-        # 1. schema_version 校验
-        self._assert_schema_fresh()
+        # 1. schema_version 校验 (parquet only; csv-backed types are reference data,
+        # schema_version 仍写入 Data_State.json 但 read 不强制)
+        if not self._is_csv:
+            self._assert_schema_fresh()
 
-        # 2. 读 parquet
-        table = pq.read_table(self.path, columns=columns)
+        if self._is_csv:
+            # CSV 路径: 全量读 + pandas 内存过滤
+            usecols = columns
+            df = pd.read_csv(self.path, usecols=usecols) if usecols else pd.read_csv(self.path)
+            if start is not None and "trading_date" in df.columns:
+                df = df[df["trading_date"] >= start]
+            if end is not None and "trading_date" in df.columns:
+                df = df[df["trading_date"] <= end]
+            if stock_codes and "stock_code" in df.columns:
+                df = df[df["stock_code"].isin(stock_codes)]
+        else:
+            # parquet 路径: pyarrow filter pushdown
+            table = pq.read_table(self.path, columns=columns)
+            flt: list[Any] = []
+            if start is not None:
+                flt.append(pc.field("trading_date") >= start)
+            if end is not None:
+                flt.append(pc.field("trading_date") <= end)
+            if stock_codes:
+                flt.append(pc.field("stock_code").isin(stock_codes))
+            if flt:
+                combined = flt[0]
+                for f in flt[1:]:
+                    combined = combined & f
+                table = table.filter(combined)
+            df = table.to_pandas()
 
-        # 3. pyarrow filter pushdown (start/end/stock_codes)
-        flt: list[Any] = []
-        if start is not None:
-            flt.append(pc.field("trading_date") >= start)
-        if end is not None:
-            flt.append(pc.field("trading_date") <= end)
-        if stock_codes:
-            flt.append(pc.field("stock_code").isin(stock_codes))
-        if flt:
-            combined = flt[0]
-            for f in flt[1:]:
-                combined = combined & f
-            table = table.filter(combined)
-
-        df = table.to_pandas()
         # 默认按 (trading_date, stock_code) 排序 (若列存在)
         sort_cols = [c for c in ("trading_date", "stock_code") if c in df.columns]
         if sort_cols:
             df = df.sort_values(sort_cols).reset_index(drop=True)
 
-        # 4. 校验 Pydantic types (仅当读全字段时)
-        # 读时只校验主键列 (trading_date / stock_code 等必须存在且合规)
+        # 校验 Pydantic types (仅当读全字段时)
         if columns is None:
             self._validate_rows(df)
         return df
@@ -203,7 +220,7 @@ class DataFile:
         return self._write_atomic(combined, append=False)
 
     def truncate(self) -> None:
-        """删除 parquet 文件."""
+        """删除物理文件 (parquet 或 csv)."""
         if self.path.exists():
             self.path.unlink()
 
@@ -225,25 +242,39 @@ class DataFile:
                 file_sha256="missing",
                 updated_at=now,
             )
-        # 读 parquet metadata (zero-IO 模式)
-        pf = pq.ParquetFile(self.path)
-        schema = pf.schema_arrow
-        n_rows = pf.metadata.num_rows
-
-        first_date: str | None = None
-        last_date: str | None = None
-        stock_count = 0
-        if "trading_date" in schema.names and n_rows > 0:
-            # 一次性读 trading_date 列 (大文件也只一列, 快)
-            tdf = pq.read_table(self.path, columns=["trading_date"])["trading_date"].to_pandas()
-            if not tdf.empty:
-                tdf = tdf.dropna()
+        if self._is_csv:
+            # CSV: 全量读 + pandas 统计
+            df = pd.read_csv(self.path)
+            n_rows = int(len(df))
+            first_date: str | None = None
+            last_date: str | None = None
+            stock_count = 0
+            if "trading_date" in df.columns and n_rows > 0:
+                tdf = df["trading_date"].dropna()
                 if not tdf.empty:
                     first_date = str(tdf.min())
                     last_date = str(tdf.max())
-        if "stock_code" in schema.names and n_rows > 0:
-            sdf = pq.read_table(self.path, columns=["stock_code"])["stock_code"].to_pandas()
-            stock_count = int(sdf.dropna().nunique())
+            if "stock_code" in df.columns and n_rows > 0:
+                stock_count = int(df["stock_code"].dropna().nunique())
+        else:
+            # parquet: metadata + 单列读
+            pf = pq.ParquetFile(self.path)
+            schema = pf.schema_arrow
+            n_rows = pf.metadata.num_rows
+
+            first_date = None
+            last_date = None
+            stock_count = 0
+            if "trading_date" in schema.names and n_rows > 0:
+                tdf = pq.read_table(self.path, columns=["trading_date"])["trading_date"].to_pandas()
+                if not tdf.empty:
+                    tdf = tdf.dropna()
+                    if not tdf.empty:
+                        first_date = str(tdf.min())
+                        last_date = str(tdf.max())
+            if "stock_code" in schema.names and n_rows > 0:
+                sdf = pq.read_table(self.path, columns=["stock_code"])["stock_code"].to_pandas()
+                stock_count = int(sdf.dropna().nunique())
         return CoverageStats(
             type_name=self.dtype.name,
             schema_version=self.dtype.schema_version,
@@ -307,24 +338,31 @@ class DataFile:
         if not self.path.exists():
             return None
         try:
+            if self._is_csv:
+                # CSV: 读全量 (CSV-backed types are small by construction)
+                return pd.read_csv(self.path)
             return pd.read_parquet(self.path, columns=list(self.dtype.primary_key))
         except Exception:
             return None
 
     def _write_atomic(self, df: pd.DataFrame, *, append: bool) -> int:
-        """原子写 parquet. append=False 时直接覆盖; append=True 时若文件存在则抛错 (业务应调 append)."""
+        """原子写 parquet 或 csv. append=False 时直接覆盖; append=True 时若文件存在则抛错 (业务应调 append)."""
         if append and self.path.exists():
             raise PrimaryKeyConflictError(self.dtype.name, "<append on existing file>")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         n = len(df)
-        table = pa.Table.from_pandas(df, preserve_index=False)
         # 写到同目录临时文件, os.replace 原子替换
+        prefix = ".csv_" if self._is_csv else ".parquet_"
         fd, tmp_path = tempfile.mkstemp(
-            prefix=".parquet_", suffix=".tmp", dir=str(self.path.parent)
+            prefix=prefix, suffix=".tmp", dir=str(self.path.parent)
         )
         os.close(fd)
         try:
-            pq.write_table(table, tmp_path, compression="snappy")
+            if self._is_csv:
+                df.to_csv(tmp_path, index=False)
+            else:
+                table = pa.Table.from_pandas(df, preserve_index=False)
+                pq.write_table(table, tmp_path, compression="snappy")
             os.replace(tmp_path, self.path)
         except Exception:
             try:
