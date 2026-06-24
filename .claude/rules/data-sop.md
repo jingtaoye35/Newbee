@@ -1,11 +1,11 @@
 # Data Module SOP (Standard Operating Procedure)
 
-> 适用范围: 任何对 `data_dict/*.yaml`、`newbee/datasource/schemas/*.py`、`docs/data_dict/*.md` 的修改.
+> 适用范围: 任何对 `configs/data_dict/*.yaml`、`newbee/datasource/schemas/*.py`、`docs/data_dict/*.md` 的修改.
 
 ## 字段定义 source of truth
 
 ```
-data_dict/<Type>.yaml   ←  唯一真源 (Pascal_Snake_Case)
+configs/data_dict/<Type>.yaml   ←  唯一真源 (Pascal_Snake_Case)
         ↓ codegen (python -m newbee.datasource.codegen)
         ├── newbee/datasource/schemas/<type>.py   (Pydantic BaseModel, 禁止手改)
         └── docs/data_dict/<Type>.md              (人类可读字典)
@@ -14,7 +14,7 @@ data_dict/<Type>.yaml   ←  唯一真源 (Pascal_Snake_Case)
 
 ## 修改字段的 5 步流程
 
-1. **改 YAML** — 编辑 `data_dict/<Type>.yaml`, 调整字段名 / 类型 / nullable / 描述
+1. **改 YAML** — 编辑 `configs/data_dict/<Type>.yaml`, 调整字段名 / 类型 / nullable / 描述
 2. **跑 codegen** — `python -m newbee.datasource.codegen`
 3. **跑 sync 测试** — `pytest tests/test_dict_sync.py -q`
 4. **写业务代码** — 在 `newbee/datasource/` 下消费字段
@@ -25,7 +25,7 @@ data_dict/<Type>.yaml   ←  唯一真源 (Pascal_Snake_Case)
 | 禁止 | 原因 |
 |---|---|
 | 直接编辑 `newbee/datasource/schemas/*.py` 添加字段 | 会与 YAML 漂移, `test_dict_sync.py` 会 fail |
-| 删除 `data_dict/<Type>.yaml` 中的字段但保留 Pydantic | 反向漂移, 测试 fail |
+| 删除 `configs/data_dict/<Type>.yaml` 中的字段但保留 Pydantic | 反向漂移, 测试 fail |
 | 跳过 codegen 直接 commit YAML 改动 | schemas 与 docs/data_dict 不会同步 |
 | 在 `data/raw/` 或 `data/adj/` 下写新文件 | 已废弃, 改用 `data/<Type>.parquet` long format |
 | 在业务代码里 hardcode `Path("data/raw")` 等路径 | 路径必须通过 `REGISTRY.get(<Type>).storage_path` 拿到 |
@@ -41,7 +41,7 @@ data_dict/<Type>.yaml   ←  唯一真源 (Pascal_Snake_Case)
 
 ## 添加新数据类型的流程
 
-1. 在 `data_dict/<NewType>.yaml` 写字段
+1. 在 `configs/data_dict/<NewType>.yaml` 写字段
 2. 跑 codegen, 检查生成的 `schemas/<newtype>.py` 和 `docs/data_dict/<NewType>.md`
 3. 在 `newbee/datasource/registry.py` 调用 `REGISTRY.register(DataType(...))` 注册
 4. 在 `newbee/datasource/service/<newtype>.py` 实现 Service (full_init / daily_update)
@@ -71,7 +71,7 @@ pytest tests/test_dict_sync.py tests/test_storage_io.py tests/test_state_tracker
 
 `~/.claude/settings.json` 中注册的 PostToolUse hook 在以下操作后自动跑 codegen + dict_sync:
 
-- `Edit|Write|MultiEdit` 作用于 `data_dict/*.yaml`
+- `Edit|Write|MultiEdit` 作用于 `configs/data_dict/*.yaml`
 - `Edit|Write|MultiEdit` 作用于 `newbee/datasource/schemas/*.py`
 
 hook 输出 stderr 不会打断 Claude 流程, 但会以 `[codegen-hook]` 开头标记 warning / 失败.

@@ -20,4 +20,4 @@
 ## Notes
 
 - 此字典由 `python -m newbee.datasource.codegen` 自动生成, 不要手改.
-- 字段定义变更请改 `data_dict/Trade_Status.yaml` 后跑 codegen + pytest.
+- 字段定义变更请改 `configs/data_dict/Trade_Status.yaml` 后跑 codegen + pytest.

@@ -130,7 +130,7 @@ def test_pydantic_fields_in_yaml(all_type_defs) -> None:
         extra = pyd_names - yaml_names
         assert not extra, (
             f"{td.name}: Pydantic 中存在但 YAML 缺失的字段: {sorted(extra)}. "
-            f"请先更新 data_dict/{td.name}.yaml 再跑 codegen."
+            f"请先更新 configs/data_dict/{td.name}.yaml 再跑 codegen."
         )
 
 

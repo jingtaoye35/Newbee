@@ -336,7 +336,7 @@ pytest tests/test_no_lookahead.py -q
 | Location | Style | Example |
 |---|---|---|
 | `data/` filenames | Pascal_Snake_Case | `KData.parquet`, `Trade_Status.parquet` |
-| `data_dict/*.yaml` | Pascal_Snake_Case | `KData.yaml`, `Stock_Basic_Data.yaml` |
+| `configs/data_dict/*.yaml` | Pascal_Snake_Case | `KData.yaml`, `Stock_Basic_Data.yaml` |
 | `docs/data_dict/*.md` | Pascal_Snake_Case | `KData.md` |
 | `data/_Manifest/` | Underscore prefix (hidden) | `Data_State.json` |
 | Python modules / packages | snake_case (PEP 8) | `newbee/datasource/storage/io.py` |
@@ -378,10 +378,10 @@ data/
 └── repr/                      # ⛔ Outside the data module scope, stays lowercase
 ```
 
-#### `data_dict/`
+#### `configs/data_dict/`
 
 ```
-data_dict/
+configs/data_dict/
 ├── KData.yaml
 ├── KData_M1.yaml
 ├── KData_M5.yaml
@@ -460,7 +460,7 @@ Decision rule: codes starting with `6` or `9` → `.SH`; codes starting with `0`
 Every data type's field definition is expressed by three files working in concert:
 
 ```
-data_dict/KData.yaml                  ← source of truth (human / AI edit entry)
+configs/data_dict/KData.yaml          ← source of truth (human / AI edit entry)
         │ codegen
         ▼
 newbee/datasource/schemas/kdata.py    ← Pydantic BaseModel (runtime strong validation)
@@ -471,7 +471,7 @@ docs/data_dict/KData.md               ← human-readable dictionary (auto-genera
 
 **Change flow**:
 
-1. Edit `data_dict/<Type>.yaml`.
+1. Edit `configs/data_dict/<Type>.yaml`.
 2. Run `python -m newbee.datasource.codegen` to regenerate Pydantic and the dictionary Markdown.
 3. Run `pytest tests/test_dict_sync.py -q` — the bidirectional consistency check must pass.
 4. Commit YAML + generated Pydantic + dictionary Markdown as a triad.
@@ -958,7 +958,7 @@ print(f"upserted {n} rows into PIT")
 
 | Change type | Must read |
 |---|---|
-| Modify a field | `data_dict/<Type>.yaml` + this doc §10.4–10.5 + `.claude/rules/data-sop.md` |
+| Modify a field | `configs/data_dict/<Type>.yaml` + this doc §10.4–10.5 + `.claude/rules/data-sop.md` |
 | Add a new factor | `newbee/factors/base.py` (Factor Protocol) + `newbee/factors/registry.py` |
 | Add a new optimizer | `newbee/portfolio/optimizers/` (interface) + `newbee/portfolio/state.py` (conventions) |
 | Add a new strategy | `configs/strategies/<name>.yaml` + `docs/01_first_factor.py` (reference) |
@@ -987,7 +987,7 @@ print(f"upserted {n} rows into PIT")
 | Any portfolio / optimizer change | `pytest tests/test_optimizer.py -q` |
 | Any logger change | `pytest tests/test_logger.py -q` |
 | Large change (>5 files or cross-layer interface) | `pytest tests/ -q` (full) + `python -m newbee.datasource.cli verify` |
-| PostToolUse hook (auto) | Editing `data_dict/*.yaml` or `schemas/*.py` auto-runs `codegen` + `dict_sync` |
+| PostToolUse hook (auto) | Editing `configs/data_dict/*.yaml` or `schemas/*.py` auto-runs `codegen` + `dict_sync` |
 
 ### 11.4 Commit Message Style
 
@@ -1049,4 +1049,4 @@ print(f"upserted {n} rows into PIT")
 ---
 
 **Maintainer**: Newbee Architecture Group
-**Change protocol**: small edits direct; large structural changes go through OpenSpec (`opsx:propose`). Edit reviewer must verify the data-layer section (§10) stays consistent with `data_dict/*.yaml` and the generated `schemas/*.py`.
+**Change protocol**: small edits direct; large structural changes go through OpenSpec (`opsx:propose`). Edit reviewer must verify the data-layer section (§10) stays consistent with `configs/data_dict/*.yaml` and the generated `schemas/*.py`.

@@ -1,7 +1,7 @@
 """Codegen: YAML 字段字典 → Pydantic BaseModel + Markdown 数据字典.
 
 设计:
-  - YAML 是 source of truth (data_dict/<Type>.yaml)
+  - YAML 是 source of truth (configs/data_dict/<Type>.yaml)
   - codegen 读取每个 YAML, 生成
       1. Pydantic BaseModel 到 newbee/datasource/schemas/<type>.py
       2. Markdown 数据字典到 docs/data_dict/<Type>.md
@@ -24,7 +24,7 @@ import yaml
 # ---------- 路径常量 ----------
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DATA_DICT_DIR = PROJECT_ROOT / "data_dict"
+DATA_DICT_DIR = PROJECT_ROOT / "configs" / "data_dict"
 SCHEMAS_DIR = PROJECT_ROOT / "newbee" / "datasource" / "schemas"
 DOCS_DIR = PROJECT_ROOT / "docs" / "data_dict"
 
@@ -173,7 +173,7 @@ def _generate_pydantic(td: TypeDef) -> str:
     if td.npy_class is not None:
         # npy 类型: 不生成 BaseModel, 只生成一个标记常量
         return (
-            f'"""Auto-generated from data_dict/{td.name}.yaml by codegen. DO NOT EDIT.\n'
+            f'"""Auto-generated from configs/data_dict/{td.name}.yaml by codegen. DO NOT EDIT.\n'
             f"\n"
             f"This type uses npy cache (matrix-shaped), no Pydantic BaseModel is needed.\n"
             f'"""\n'
@@ -254,7 +254,7 @@ def _generate_markdown(td: TypeDef) -> str:
     lines.append("## Notes")
     lines.append("")
     lines.append(f"- 此字典由 `python -m newbee.datasource.codegen` 自动生成, 不要手改.")
-    lines.append(f"- 字段定义变更请改 `data_dict/{td.name}.yaml` 后跑 codegen + pytest.")
+    lines.append(f"- 字段定义变更请改 `configs/data_dict/{td.name}.yaml` 后跑 codegen + pytest.")
     lines.append("")
     return "\n".join(lines)
 
@@ -263,9 +263,9 @@ def _generate_markdown(td: TypeDef) -> str:
 
 
 def generate_all(verbose: bool = True) -> tuple[list[Path], list[Path]]:
-    """遍历 data_dict/, 生成 Pydantic + markdown. 返回 (py_files, md_files)."""
+    """遍历 configs/data_dict/, 生成 Pydantic + markdown. 返回 (py_files, md_files)."""
     if not DATA_DICT_DIR.exists():
-        raise FileNotFoundError(f"未找到 data_dict 目录: {DATA_DICT_DIR}")
+        raise FileNotFoundError(f"未找到 configs/data_dict 目录: {DATA_DICT_DIR}")
 
     SCHEMAS_DIR.mkdir(parents=True, exist_ok=True)
     DOCS_DIR.mkdir(parents=True, exist_ok=True)

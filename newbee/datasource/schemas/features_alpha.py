@@ -1,4 +1,4 @@
-"""Auto-generated from data_dict/Features_Alpha.yaml by codegen. DO NOT EDIT.
+"""Auto-generated from configs/data_dict/Features_Alpha.yaml by codegen. DO NOT EDIT.
 
 This type uses npy cache (matrix-shaped), no Pydantic BaseModel is needed.
 """
