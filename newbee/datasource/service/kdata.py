@@ -1,7 +1,6 @@
 """KDataService: 日 K 线 full_init + daily_update + read_window."""
 from __future__ import annotations
 
-import logging
 import time
 from dataclasses import dataclass
 from datetime import date
@@ -14,8 +13,7 @@ from newbee.datasource.service.universe import UniverseService
 from newbee.datasource.sources.akshare import FetchSummary, fetch_stock_hist
 from newbee.datasource.storage.io import DataFile
 from newbee.datasource.storage.state import StateTracker
-
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 @dataclass

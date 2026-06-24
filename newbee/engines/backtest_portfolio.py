@@ -19,7 +19,6 @@
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Callable
@@ -42,8 +41,7 @@ from newbee.portfolio import (
     mean_variance,
     project_all,
 )
-
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 # ----- 数据结构 -----

@@ -9,7 +9,6 @@
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -23,8 +22,7 @@ from newbee.factors.pipeline import (
     information_coefficient,
     rank_ic,
 )
-
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 # ---------- 结果容器 ----------

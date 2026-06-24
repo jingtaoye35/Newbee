@@ -11,13 +11,12 @@ API:
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 @runtime_checkable

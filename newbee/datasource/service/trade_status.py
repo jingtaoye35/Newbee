@@ -7,7 +7,6 @@ KData 的 high == low == close (且 close > 0) → 视作停牌候选; ST 需要
 """
 from __future__ import annotations
 
-import logging
 from datetime import date
 from pathlib import Path
 
@@ -17,8 +16,7 @@ from newbee.datasource.registry import REGISTRY
 from newbee.datasource.service.universe import UniverseService
 from newbee.datasource.storage.io import DataFile
 from newbee.datasource.storage.state import StateTracker
-
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 class TradeStatusService:

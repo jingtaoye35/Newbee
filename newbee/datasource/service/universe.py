@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 from datetime import datetime, timezone
 
 import numpy as np
@@ -12,8 +11,7 @@ from newbee.datasource.registry import REGISTRY
 from newbee.datasource.sources.akshare import fetch_index_constituents, fetch_ipo_date
 from newbee.datasource.storage.io import DataFile
 from newbee.datasource.storage.state import StateTracker
-
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 class UniverseService:

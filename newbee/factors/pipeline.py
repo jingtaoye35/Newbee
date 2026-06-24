@@ -14,7 +14,6 @@
 """
 from __future__ import annotations
 
-import logging
 from datetime import date
 from typing import Callable
 
@@ -23,8 +22,7 @@ import pandas as pd
 
 from newbee.factors.base import FactorSpec, SimpleFactor, n_nonan
 from newbee.factors.registry import get as get_factor
-
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 def compute_factor_at(

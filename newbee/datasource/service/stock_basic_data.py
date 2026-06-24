@@ -6,7 +6,6 @@ M1 简化: 由于 sina 源不直接给 adj_factor, 而东财源给 hfq 价, 我�
 """
 from __future__ import annotations
 
-import logging
 from datetime import date
 from pathlib import Path
 
@@ -16,8 +15,7 @@ from newbee.datasource.registry import REGISTRY
 from newbee.datasource.service.universe import UniverseService
 from newbee.datasource.storage.io import DataFile
 from newbee.datasource.storage.state import StateTracker
-
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 class StockBasicDataService:

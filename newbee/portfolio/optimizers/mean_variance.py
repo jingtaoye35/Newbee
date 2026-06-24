@@ -14,13 +14,12 @@
 """
 from __future__ import annotations
 
-import logging
 from typing import Sequence
 
 import numpy as np
 from scipy.optimize import minimize
 
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 def mean_variance(

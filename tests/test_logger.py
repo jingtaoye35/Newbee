@@ -1,4 +1,4 @@
-"""`newbee.utils._logger` 模块级 proxy 测试.
+"""`newbee.utils.logger` 模块级 proxy 测试.
 
 覆盖 spec/custom-logger 的全部 Scenario:
   - Requirement 1: 调用方模块名归属 / 跨模块复用 / 透传方法
@@ -61,7 +61,7 @@ def _isolate_logger(caplog):
         这里在 setUp 阶段把 caplog.handler 也直接挂到被测 logger 上, 让 caplog
         能 capture; teardown 时移除, 恢复 _configure 之前的状态.
     """
-    names = (_CALLER_NAME, "newbee.utils._logger")
+    names = (_CALLER_NAME, "newbee.utils.logger")
     for n in names:
         _reset_logger(n)
     # 给被测 logger 直接挂 caplog.handler, 绕过 propagate=False
@@ -192,13 +192,13 @@ def test_default_format(caplog):
 
 
 def test_log_format_override(monkeypatch):
-    """LOG_FORMAT 环境变量覆盖 format, 走 _FORMAT 重读 (需 reload _logger)."""
+    """LOG_FORMAT 环境变量覆盖 format, 走 _FORMAT 重读 (需 reload logger)."""
     monkeypatch.setenv("LOG_FORMAT", "OVERRIDE %(levelname)s %(message)s")
     # 重置 proxy 注入的 handler
     _reset_logger(_CALLER_NAME)
 
     # 卸载重载以让 _FORMAT 重新读
-    for mod_name in ("newbee.utils._logger", "newbee.utils"):
+    for mod_name in ("newbee.utils.logger", "newbee.utils"):
         if mod_name in sys.modules:
             del sys.modules[mod_name]
     try:
@@ -214,10 +214,10 @@ def test_log_format_override(monkeypatch):
     finally:
         # 清掉污染再 reload 恢复默认
         _reset_logger(_CALLER_NAME)
-        for mod_name in ("newbee.utils._logger", "newbee.utils"):
+        for mod_name in ("newbee.utils.logger", "newbee.utils"):
             if mod_name in sys.modules:
                 del sys.modules[mod_name]
-        importlib.import_module("newbee.utils._logger")
+        importlib.import_module("newbee.utils.logger")
         importlib.import_module("newbee.utils")
 
 
@@ -263,16 +263,22 @@ def test_legacy_logging_getlogger_path_unchanged():
 
 
 def test_module_all_export():
-    """from newbee.utils._logger import * 仅得到 logger."""
-    import newbee.utils._logger as mod
+    """`newbee.utils.logger` 模块的 `__all__` 仅含 `logger`.
 
+    Note:
+        `import newbee.utils.logger` 在 `__init__.py` 末尾会被 proxy binding
+        覆盖,返回 `_LoggerProxy` 而非子 module;访问子 module 须经 `sys.modules`.
+    """
+    import sys
+
+    mod = sys.modules["newbee.utils.logger"]
     ns = {k: getattr(mod, k) for k in mod.__all__}
     assert set(ns.keys()) == {"logger"}
 
 
 def test_top_level_logger_alias():
-    """from newbee.utils import logger 与 from newbee.utils._logger import logger 是同一对象."""
+    """from newbee.utils import logger 与 from newbee.utils.logger import logger 是同一对象."""
     from newbee.utils import logger as top_logger
-    from newbee.utils._logger import logger as direct_logger
+    from newbee.utils.logger import logger as direct_logger
 
     assert top_logger is direct_logger

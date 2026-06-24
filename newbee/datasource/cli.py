@@ -17,7 +17,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 
 def cmd_data_status(args: argparse.Namespace) -> int:

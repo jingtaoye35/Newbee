@@ -10,7 +10,6 @@
 """
 from __future__ import annotations
 
-import logging
 import time
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -18,7 +17,7 @@ from typing import Callable, TypeVar
 
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+from newbee.utils import logger
 
 # ---------- 配置 ----------
 

@@ -15,6 +15,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from newbee.utils import logger
 from newbee.utils.config import (
     DEFAULT_ALPHA_RESULTS,
     DEFAULT_DATA_ROOT,
@@ -24,9 +25,6 @@ from newbee.utils.config import (
     resolve_data_range,
     strategy_id,
 )
-from newbee.utils import logger as nb_logger
-
-logger = logging.getLogger(__name__)
 
 
 # ---------- 子命令实现 ----------
