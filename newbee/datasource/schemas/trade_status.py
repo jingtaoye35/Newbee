@@ -6,7 +6,7 @@ __all__ = ["TradeStatus"]
 
 
 class TradeStatus(BaseModel):
-    """交易状态 (停牌/ST/活跃), long format."""
+    """交易状态 (停牌/ST/活跃, long format)."""
 
     model_config = ConfigDict(extra="forbid", frozen=False)
 
@@ -14,7 +14,7 @@ class TradeStatus(BaseModel):
     stock_code: str  # 9-char .SH/.SZ — 9 字符股票代码.
     is_suspended: bool  # bool — True 当日停牌.
     is_st: bool  # bool — True 当日被 ST 标记.
-    is_activate: bool  # bool — True 当日正常交易 (非停牌非 ST).
+    is_activate: bool  # bool — True 当日正常交易 (非停牌非 ST 非退市).
 
     @field_validator("stock_code")
     @classmethod

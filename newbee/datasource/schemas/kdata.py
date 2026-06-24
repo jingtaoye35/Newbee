@@ -6,7 +6,7 @@ __all__ = ["KData"]
 
 
 class KData(BaseModel):
-    """日 K 线 (post-adjusted, long format)."""
+    """日 K 线 (long format)."""
 
     model_config = ConfigDict(extra="forbid", frozen=False)
 
@@ -18,7 +18,7 @@ class KData(BaseModel):
     close: float | None  # CNY — 收盘价 (nullable).
     amount: float | None  # CNY — 成交额 (nullable).
     volume: float | None  # shares — 成交量 (nullable).
-    close_post_adj: float | None  # CNY — 后复权收盘价 = close * adj_factor (post-adjusted).
+    close_adj: float | None  # CNY — 后复权收盘价 = close * adj_factor (post-adjusted).
 
     @field_validator("stock_code")
     @classmethod

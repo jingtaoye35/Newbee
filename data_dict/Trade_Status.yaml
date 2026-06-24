@@ -1,5 +1,5 @@
 name: Trade_Status
-description: 交易状态 (停牌/ST/活跃), long format.
+description: 交易状态 (停牌/ST/活跃, long format).
 schema_version: "1.0"
 frequency: daily
 storage: data/Trade_Status.parquet
@@ -31,4 +31,4 @@ fields:
     pyarrow: bool
     nullable: false
     unit: bool
-    description: True 当日正常交易 (非停牌非 ST).
+    description: True 当日正常交易 (非停牌非 ST 非退市).

@@ -1,6 +1,6 @@
 # KData
 
-> 日 K 线 (post-adjusted, long format).
+> 日 K 线 (long format).
 
 - **schema_version**: `1.0`
 - **frequency**: `daily`
@@ -19,7 +19,7 @@
 | `close` | `float` (float) | ✓ | CNY | 收盘价 (nullable). |
 | `amount` | `float` (float) | ✓ | CNY | 成交额 (nullable). |
 | `volume` | `float` (float) | ✓ | shares | 成交量 (nullable). |
-| `close_post_adj` | `float` (float) | ✓ | CNY | 后复权收盘价 = close * adj_factor (post-adjusted). |
+| `close_adj` | `float` (float) | ✓ | CNY | 后复权收盘价 = close * adj_factor (post-adjusted). |
 
 ## Notes
 

@@ -1,5 +1,5 @@
 name: KData
-description: 日 K 线 (post-adjusted, long format).
+description: 日 K 线 (long format).
 schema_version: "1.0"
 frequency: daily
 storage: data/KData.parquet
@@ -47,7 +47,7 @@ fields:
     nullable: true
     unit: shares
     description: 成交量 (nullable).
-  - name: close_post_adj
+  - name: close_adj
     pyarrow: float
     nullable: true
     unit: CNY

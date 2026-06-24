@@ -1,0 +1,39 @@
+name: Stock_Basic_Data
+description: 股票基础数据 (累积复权因子 + 涨跌停价 + 申万行业, long format, float64 精度).
+schema_version: "1.0"
+frequency: daily
+storage: data/Stock_Basic_Data.parquet
+primary_key:
+  - trading_date
+  - stock_code
+fields:
+  - name: trading_date
+    pyarrow: string
+    nullable: false
+    unit: YYYY-MM-DD
+    description: 交易日.
+  - name: stock_code
+    pyarrow: string
+    nullable: false
+    unit: 9-char .SH/.SZ
+    description: 9 字符股票代码.
+  - name: adj_factor
+    pyarrow: double
+    nullable: true
+    unit: ratio
+    description: 累积复权因子 (float64 精度, 防长 horizon 漂移).
+  - name: limit_upper_price
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 涨停价 (nullable).
+  - name: limit_lower_price
+    pyarrow: float
+    nullable: true
+    unit: CNY
+    description: 跌停价 (nullable).
+  - name: sw_industry
+    pyarrow: string
+    nullable: true
+    unit: 
+    description: 申万一级行业.
