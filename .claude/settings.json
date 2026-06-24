@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/yejingtao/JohnsonProject/Newbee/.claude/hooks/post_edit_data_dict.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
