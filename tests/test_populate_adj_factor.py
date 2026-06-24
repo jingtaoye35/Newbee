@@ -139,20 +139,20 @@ def test_compute_adj_factor_columns_exact_and_sorted(tmp_path: Path) -> None:
 # ---------- apply_adj_factor_to_stock_basic: in-place upsert ----------
 
 
-def test_apply_preserves_outstanding_share_and_turnover(tmp_path: Path) -> None:
+def test_apply_preserves_total_share_and_turnover(tmp_path: Path) -> None:
     sbd_path = tmp_path / "Stock_Basic_Data.parquet"
     _write_sbd(
         sbd_path,
         [
             {"trading_date": "2024-01-02", "stock_code": "600000.SH",
              "adj_factor": None, "limit_upper_price": None, "limit_lower_price": None,
-             "sw_industry": None, "outstanding_share": 9_500_000.0, "turnover": 0.005},
+             "sw_industry": None, "total_share": 9_500_000.0, "turnover": 0.005},
             {"trading_date": "2024-01-03", "stock_code": "600000.SH",
              "adj_factor": None, "limit_upper_price": None, "limit_lower_price": None,
-             "sw_industry": None, "outstanding_share": 9_500_000.0, "turnover": 0.006},
+             "sw_industry": None, "total_share": 9_500_000.0, "turnover": 0.006},
             {"trading_date": "2024-01-02", "stock_code": "000001.SZ",
              "adj_factor": None, "limit_upper_price": None, "limit_lower_price": None,
-             "sw_industry": None, "outstanding_share": 20_300_000.0, "turnover": 0.00114},
+             "sw_industry": None, "total_share": 20_300_000.0, "turnover": 0.00114},
         ],
     )
 
@@ -170,16 +170,16 @@ def test_apply_preserves_outstanding_share_and_turnover(tmp_path: Path) -> None:
     reread = _sbd_file_at(sbd_path).read()
     # 3 rows preserved
     assert len(reread) == 3
-    # outstanding_share / turnover byte-identical
+    # total_share / turnover byte-identical
     row_001 = reread[reread["stock_code"] == "000001.SZ"].iloc[0]
-    assert float(row_001["outstanding_share"]) == pytest.approx(20_300_000.0)
+    assert float(row_001["total_share"]) == pytest.approx(20_300_000.0)
     assert float(row_001["turnover"]) == pytest.approx(0.00114)
     assert pd.isna(row_001["adj_factor"])  # not in adj_df
     # 600000.SH rows got adj_factor
     r600 = reread[reread["stock_code"] == "600000.SH"]
     assert sorted(r600["adj_factor"].tolist()) == [2.0, 2.5]
-    # outstanding_share preserved
-    assert (r600["outstanding_share"] == 9_500_000.0).all()
+    # total_share preserved
+    assert (r600["total_share"] == 9_500_000.0).all()
     assert (r600["turnover"].isin([0.005, 0.006])).all()
 
 
@@ -190,7 +190,7 @@ def test_apply_left_join_keeps_unmatched_as_none(tmp_path: Path) -> None:
         [
             {"trading_date": "2024-01-02", "stock_code": "600000.SH",
              "adj_factor": None, "limit_upper_price": None, "limit_lower_price": None,
-             "sw_industry": None, "outstanding_share": 1.0, "turnover": 0.1},
+             "sw_industry": None, "total_share": 1.0, "turnover": 0.1},
         ],
     )
 
@@ -209,7 +209,7 @@ def test_apply_left_join_keeps_unmatched_as_none(tmp_path: Path) -> None:
     reread = _sbd_file_at(sbd_path).read()
     assert len(reread) == 1
     assert pd.isna(reread.iloc[0]["adj_factor"])  # not in adj_df → stays None
-    assert float(reread.iloc[0]["outstanding_share"]) == pytest.approx(1.0)
+    assert float(reread.iloc[0]["total_share"]) == pytest.approx(1.0)
 
 
 def test_apply_round_trip_via_datafile(tmp_path: Path) -> None:
@@ -219,7 +219,7 @@ def test_apply_round_trip_via_datafile(tmp_path: Path) -> None:
         [
             {"trading_date": "2024-01-02", "stock_code": "600000.SH",
              "adj_factor": None, "limit_upper_price": None, "limit_lower_price": None,
-             "sw_industry": None, "outstanding_share": 1.0, "turnover": 0.1},
+             "sw_industry": None, "total_share": 1.0, "turnover": 0.1},
         ],
     )
     adj_df = pd.DataFrame(
@@ -244,7 +244,7 @@ def test_apply_idempotent(tmp_path: Path) -> None:
         [
             {"trading_date": "2024-01-02", "stock_code": "600000.SH",
              "adj_factor": None, "limit_upper_price": None, "limit_lower_price": None,
-             "sw_industry": None, "outstanding_share": 1.0, "turnover": 0.1},
+             "sw_industry": None, "total_share": 1.0, "turnover": 0.1},
         ],
     )
     adj_df = pd.DataFrame(

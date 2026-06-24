@@ -37,7 +37,7 @@ fields:
     nullable: true
     unit:
     description: 申万一级行业.
-  - name: outstanding_share
+  - name: total_share
     pyarrow: double
     nullable: true
     unit: shares
@@ -46,4 +46,4 @@ fields:
     pyarrow: double
     nullable: true
     unit: ratio
-    description: 日换手率 (volume / outstanding_share).
+    description: 日换手率 (volume / total_share).

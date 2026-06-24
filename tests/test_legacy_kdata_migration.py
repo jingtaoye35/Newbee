@@ -30,17 +30,17 @@ def _write_legacy_per_stock(
     dates: list[pd.Timestamp],
     close: list[float] | None = None,
     adj_close: list[float] | None = None,
-    outstanding_share: list[float] | None = None,
+    total_share: list[float] | None = None,
     turnover: list[float] | None = None,
 ) -> None:
-    """写一个 {stock_id}.parquet, 列: date, stock_id, open, high, low, close, volume, amount, adj_close [, outstanding_share, turnover]."""
+    """写一个 {stock_id}.parquet, 列: date, stock_id, open, high, low, close, volume, amount, adj_close [, total_share, turnover]."""
     n = len(dates)
     if close is None:
         close = [10.0 + i for i in range(n)]
     if adj_close is None:
         adj_close = [c * 0.5 for c in close]
-    if outstanding_share is None:
-        outstanding_share = [1.0e7] * n
+    if total_share is None:
+        total_share = [1.0e7] * n
     if turnover is None:
         turnover = [0.01 * (i + 1) for i in range(n)]
     df = pd.DataFrame(
@@ -54,7 +54,7 @@ def _write_legacy_per_stock(
             "volume": [1e6 * (i + 1) for i in range(n)],
             "amount": [1e8 * (i + 1) for i in range(n)],
             "adj_close": adj_close,
-            "outstanding_share": outstanding_share,
+            "total_share": total_share,
             "turnover": turnover,
         }
     )
@@ -220,14 +220,14 @@ def test_build_sbd_two_stock_happy(tmp_path: Path) -> None:
         raw / "000001.parquet",
         "000001",
         pd.to_datetime(dates_001),
-        outstanding_share=[20_300_000.0] * 3,
+        total_share=[20_300_000.0] * 3,
         turnover=[0.00114, 0.00120, 0.00118],
     )
     _write_legacy_per_stock(
         raw / "600000.parquet",
         "600000",
         pd.to_datetime(dates_600),
-        outstanding_share=[9_500_000.0] * 3,
+        total_share=[9_500_000.0] * 3,
         turnover=[0.005, 0.006, 0.007],
     )
 
@@ -237,12 +237,12 @@ def test_build_sbd_two_stock_happy(tmp_path: Path) -> None:
     expected_cols = {
         "trading_date", "stock_code", "adj_factor",
         "limit_upper_price", "limit_lower_price", "sw_industry",
-        "outstanding_share", "turnover",
+        "total_share", "turnover",
     }
     assert set(df.columns) == expected_cols
 
     row_001 = df[df["stock_code"] == "000001.SZ"].iloc[0]
-    assert float(row_001["outstanding_share"]) == 20_300_000.0
+    assert float(row_001["total_share"]) == 20_300_000.0
     assert abs(float(row_001["turnover"]) - 0.00114) < 1e-9
 
     # adj_factor / limit_* / sw_industry 全部 None
@@ -292,7 +292,7 @@ def test_sbd_round_trip_via_datafile(tmp_path: Path) -> None:
         raw / "000001.parquet",
         "000001",
         pd.to_datetime(dates),
-        outstanding_share=[5_000_000.0, 5_000_000.0],
+        total_share=[5_000_000.0, 5_000_000.0],
         turnover=[0.01, 0.02],
     )
 
@@ -307,4 +307,4 @@ def test_sbd_round_trip_via_datafile(tmp_path: Path) -> None:
     reread = custom_f.read()
     assert len(reread) == len(df)
     assert reread["adj_factor"].isna().all()
-    assert float(reread["outstanding_share"].iloc[0]) == pytest.approx(5_000_000.0)
+    assert float(reread["total_share"].iloc[0]) == pytest.approx(5_000_000.0)

@@ -539,8 +539,8 @@ Primary key: `(trading_date, stock_code)`.
 | `limit_upper_price` | float32 | Y | 涨停价 (nullable; future data source) |
 | `limit_lower_price` | float32 | Y | 跌停价 (nullable; future data source) |
 | `sw_industry` | string | Y | 申万一级行业 (nullable; future data source) |
-| `outstanding_share` | float64 | Y | 总股本 (流通股 + 非流通股) |
-| `turnover` | float64 | Y | 日换手率 `volume / outstanding_share` |
+| `total_share` | float64 | Y | 总股本 (流通股 + 非流通股) |
+| `turnover` | float64 | Y | 日换手率 `volume / total_share` |
 
 Primary key: `(trading_date, stock_code)`.
 

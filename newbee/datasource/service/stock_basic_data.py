@@ -37,7 +37,7 @@ class StockBasicDataService:
         """adj_factor = close_adj / close (假设两者均非 0 / NaN).
 
         返回 trading_date / stock_code / adj_factor / limit_upper_price / limit_lower_price /
-        sw_industry / outstanding_share / turnover. 后五个字段 M1 阶段从 KData 无法推得,
+        sw_industry / total_share / turnover. 后五个字段 M1 阶段从 KData 无法推得,
         填 None, 后续接入涨跌停/行业/股本数据源再回填.
         """
         cols = [
@@ -47,7 +47,7 @@ class StockBasicDataService:
             "limit_upper_price",
             "limit_lower_price",
             "sw_industry",
-            "outstanding_share",
+            "total_share",
             "turnover",
         ]
         if kdata.empty:
@@ -60,7 +60,7 @@ class StockBasicDataService:
         df["limit_upper_price"] = None
         df["limit_lower_price"] = None
         df["sw_industry"] = None
-        df["outstanding_share"] = None
+        df["total_share"] = None
         df["turnover"] = None
         return df[cols]
 
