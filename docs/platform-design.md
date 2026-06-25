@@ -426,6 +426,8 @@ docs/data_dict/
 └── Features_Alpha.md
 ```
 
+> **Operator walkthrough**: for a procedural guide on how to write data into `data/` (which CLI commands to run, how to read `data status`, common operations, troubleshooting), see [`docs/user-manual.md`](user-manual.md). This section (§10) is the design specification; the user manual is the operator-facing entry point.
+
 #### `newbee/datasource/`
 
 > The package is named `datasource` (singular), distinct from the physical `data/` directory.
