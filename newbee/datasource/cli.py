@@ -2,7 +2,8 @@
 
 子命令:
   - data status: 打印 Data_State.json + 每类型 stats
-  - data update [--type KData|...] [--source sina|em|tx]: 增量拉取
+  - data update [--type KData|Trade_Status|Stock_Basic_Data|Trading_Date|Universe] [--source sina|em|tx]: 增量拉取
+    (Trading_Date 目标日期 = today + 1 天;CSV 缺失时自动 bootstrap)
   - data init-universe [--index csi1000] [--backdate 2020-01-01]: 初始化 universe
   - data codegen: 重跑 codegen
   - data verify: 跑 dict_sync + storage_io + state_tracker 测试
@@ -14,7 +15,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from newbee.utils import logger
@@ -71,6 +72,17 @@ def cmd_data_update(args: argparse.Namespace) -> int:
 
         result = StockBasicDataService(root=str(root)).daily_update(today=date.today())
         print(f"Stock_Basic_Data update: {result}")
+    elif dtype.name == "Trading_Date":
+        from newbee.datasource.service.trading_date import Trading_DateService
+
+        # 目标日期 = 执行日 + 1 天;CSV 缺失时 daily_update 会自动 fallback 到 full_init.
+        target = date.today() + timedelta(days=1)
+        result = Trading_DateService(root=str(root)).daily_update(today=target)
+        print(
+            f"Trading_Date update: rows_added={result.rows_added} "
+            f"last={result.last_date} rows={result.row_count} "
+            f"elapsed={result.elapsed_sec:.1f}s"
+        )
     elif dtype.name == "Universe":
         from newbee.datasource.service.universe import UniverseService
 
@@ -280,7 +292,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # update
     p_update = sub.add_parser("update", help="增量拉取")
-    p_update.add_argument("--type", default="KData", help="类型名 (KData / Trade_Status / Stock_Basic_Data / Universe)")
+    p_update.add_argument(
+        "--type",
+        default="KData",
+        help="类型名 (KData / Trade_Status / Stock_Basic_Data / Trading_Date / Universe)",
+    )
     p_update.add_argument("--source", default="sina", choices=["sina", "em", "tx"])
     p_update.add_argument("--index", default="csi1000", help="universe 指数名 (仅 Universe)")
     p_update.add_argument("--backdate", default="2020-01-01", help="backdate (仅 Universe)")
