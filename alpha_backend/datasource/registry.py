@@ -128,71 +128,76 @@ REGISTRY = DataRegistry()
 
 
 def _register_defaults() -> None:
-    """注册所有内置 DataType. 模块导入时调用一次."""
-    from alpha_backend.datasource.schemas import (
-        KData,
-        StockBasicData,
-        TradeStatus,
-        TradingDate,
-        Universe,
-    )
+    """注册所有内置 DataType. 模块导入时调用一次.
 
-    # KData: daily, primary key (trading_date, stock_code)
+    Sentinel 之间的 register 调用块由 `python -m alpha_backend.datasource.codegen`
+    从 configs/data_dict/*.yaml 自动派生, 不要手改. pydantic_model 通过
+    `_schemas.<ClassName>` 模块引用, 无需在 import 列表中逐个声明.
+    """
+    import alpha_backend.datasource.schemas as _schemas
+
+    # codegen: begin — DO NOT EDIT BY HAND
+    # KData: daily, primary_key ('trading_date', 'stock_code')
     REGISTRY.register(
         DataType(
             name="KData",
             schema_version="1.0",
             frequency="daily",
-            storage_path=Path("datas/KData.parquet"),
-            primary_key=("trading_date", "stock_code"),
-            pydantic_model=KData,
+            storage_path=Path('datas/KData.parquet'),
+            primary_key=('trading_date', 'stock_code'),
+            pydantic_model=_schemas.KData,
         )
     )
-    # Trade_Status: daily
-    REGISTRY.register(
-        DataType(
-            name="Trade_Status",
-            schema_version="1.0",
-            frequency="daily",
-            storage_path=Path("datas/Trade_Status.parquet"),
-            primary_key=("trading_date", "stock_code"),
-            pydantic_model=TradeStatus,
-        )
-    )
-    # Stock_Basic_Data: daily
+
+    # Stock_Basic_Data: daily, primary_key ('trading_date', 'stock_code')
     REGISTRY.register(
         DataType(
             name="Stock_Basic_Data",
             schema_version="1.0",
             frequency="daily",
-            storage_path=Path("datas/Stock_Basic_Data.parquet"),
-            primary_key=("trading_date", "stock_code"),
-            pydantic_model=StockBasicData,
+            storage_path=Path('datas/Stock_Basic_Data.parquet'),
+            primary_key=('trading_date', 'stock_code'),
+            pydantic_model=_schemas.StockBasicData,
         )
     )
-    # Universe: static
+
+    # Trade_Status: daily, primary_key ('trading_date', 'stock_code')
     REGISTRY.register(
         DataType(
-            name="Universe",
+            name="Trade_Status",
             schema_version="1.0",
-            frequency="static",
-            storage_path=Path("datas/Universe.parquet"),
-            primary_key=("stock_index",),
-            pydantic_model=Universe,
+            frequency="daily",
+            storage_path=Path('datas/Trade_Status.parquet'),
+            primary_key=('trading_date', 'stock_code'),
+            pydantic_model=_schemas.TradeStatus,
         )
     )
-    # Trading_Date: static, CSV-backed single-column reference datas
+
+    # Trading_Date: static, primary_key ('trading_date',)
     REGISTRY.register(
         DataType(
             name="Trading_Date",
             schema_version="1.0",
             frequency="static",
-            storage_path=Path("datas/Trading_Date.csv"),
-            primary_key=("trading_date",),
-            pydantic_model=TradingDate,
+            storage_path=Path('datas/Trading_Date.csv'),
+            primary_key=('trading_date',),
+            pydantic_model=_schemas.TradingDate,
             format="csv",
         )
     )
+
+    # Universe: static, primary_key ('stock_index',)
+    REGISTRY.register(
+        DataType(
+            name="Universe",
+            schema_version="1.0",
+            frequency="static",
+            storage_path=Path('datas/Universe.parquet'),
+            primary_key=('stock_index',),
+            pydantic_model=_schemas.Universe,
+        )
+    )
+    # codegen: end
 
 
 # 导入即注册 (确保 REGISTRY 在任何使用前就绪)

@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import importlib
 import keyword
 import re
 import sys
@@ -27,6 +28,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DICT_DIR = PROJECT_ROOT / "configs" / "data_dict"
 SCHEMAS_DIR = PROJECT_ROOT / "alpha_backend" / "datasource" / "schemas"
 DOCS_DIR = PROJECT_ROOT / "docs" / "data_dict"
+REGISTRY_PY = PROJECT_ROOT / "alpha_backend" / "datasource" / "registry.py"
+REGISTRY_SENTINEL_BEGIN = "# codegen: begin"
+REGISTRY_SENTINEL_END = "# codegen: end"
 
 # ---------- 类型映射 ----------
 
@@ -272,9 +276,11 @@ def generate_all(verbose: bool = True) -> tuple[list[Path], list[Path]]:
 
     py_files: list[Path] = []
     md_files: list[Path] = []
+    tds: list[TypeDef] = []
 
     for yml_path in sorted(DATA_DICT_DIR.glob("*.yaml")):
         td = TypeDef.from_yaml_path(yml_path)
+        tds.append(td)
 
         # Pydantic
         py_path = SCHEMAS_DIR / f"{td.module_name}.py"
@@ -294,6 +300,10 @@ def generate_all(verbose: bool = True) -> tuple[list[Path], list[Path]]:
 
     # 生成 schemas 包 __init__.py: re-export 所有 BaseModel
     _write_schemas_init(py_files)
+    # 同步重写 registry.py _register_defaults sentinel 之间的 register 块
+    _write_registry_default_block(tds)
+    if verbose:
+        print(f"[codegen] {REGISTRY_PY.relative_to(PROJECT_ROOT)} ← registry register block")
     return py_files, md_files
 
 
@@ -340,8 +350,157 @@ def _resolve_from_yaml(module: str) -> str:
     raise KeyError(f"找不到模块 {module} 对应的 YAML")
 
 
+# ---------- registry.py _register_defaults 重写 ----------
+
+
+_STORAGE_FORMAT_MAP: dict[str, str] = {
+    ".parquet": "parquet",
+    ".csv": "csv",
+}
+
+
+def _format_from_storage(storage: str) -> str:
+    """从 YAML storage 字段后缀推断 DataType.format.
+
+    例: 'datas/KData.parquet' → 'parquet', 'datas/Trading_Date.csv' → 'csv'.
+    未知后缀抛 ValueError, 强制开发者在 codegen 之外补 format.
+    """
+    suffix = Path(storage).suffix.lower()
+    fmt = _STORAGE_FORMAT_MAP.get(suffix)
+    if fmt is None:
+        raise ValueError(
+            f"无法从 storage={storage!r} 推断 format; "
+            f"仅支持 {_STORAGE_FORMAT_MAP.keys()}, 请调整 YAML 或扩展 codegen"
+        )
+    return fmt
+
+
+def _render_registry_block(tds: list[TypeDef]) -> str:
+    """从 TypeDef 列表派生 _register_defaults() sentinel 之间的 register 块.
+
+    用 importlib 反射拿 pydantic_model 类 (而不是写死 import 行), 保证 schemas
+    集合变化时无需人工维护 import 列表. 反射路径假设 schemas.__init__ 已经写好.
+
+    输出形式: `pydantic_model=_schemas.<ClassName>`, 配合 registry.py 顶部手工写的
+    `import alpha_backend.datasource.schemas as _schemas`, 新增 YAML 时无需任何手工动作.
+    """
+    schemas_pkg = importlib.import_module("alpha_backend.datasource.schemas")
+    lines: list[str] = []
+    for td in tds:
+        if td.npy_class is not None:
+            # npy 类型不走 parquet/csv 存储, codegen 暂不为其生成 register
+            continue
+        cls = getattr(schemas_pkg, _to_class_name(td.name))
+        fmt = _format_from_storage(td.storage)
+        # 用 repr(tuple(...)) 保证单元素 primary_key 也带尾逗号,
+        # 避免 `primary_key=("foo")` 被 Python 当作字符串.
+        pk_repr = repr(tuple(td.primary_key))[1:-1]  # 去掉外层括号, 保留内部引号/逗号
+        cls_name = _to_class_name(td.name)
+        # 缩进匹配 registry.py 现有风格
+        lines.append(f"    # {td.name}: {td.frequency}, primary_key {tuple(td.primary_key)}")
+        lines.append(f"    REGISTRY.register(")
+        lines.append(f"        DataType(")
+        lines.append(f'            name="{td.name}",')
+        lines.append(f'            schema_version="{td.schema_version}",')
+        lines.append(f'            frequency="{td.frequency}",')
+        lines.append(f"            storage_path=Path({td.storage!r}),")
+        lines.append(f"            primary_key=({pk_repr}),")
+        lines.append(f"            pydantic_model=_schemas.{cls_name},")
+        if fmt != "parquet":
+            lines.append(f'            format="{fmt}",')
+        lines.append(f"        )")
+        lines.append(f"    )")
+        lines.append("")
+    # 去掉尾部空行, 块末尾不留空白
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines)
+
+
+def _write_registry_default_block(tds: list[TypeDef]) -> None:
+    """重写 registry.py 中 sentinel 之间的 register 块.
+
+    sentinel 缺失时抛 RuntimeError (含具体行号), 防止误删 sentinel 后静默整段重写.
+    """
+    text = REGISTRY_PY.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=True)
+
+    begin_idx: int | None = None
+    end_idx: int | None = None
+    for i, line in enumerate(lines):
+        if REGISTRY_SENTINEL_BEGIN in line:
+            begin_idx = i
+        elif REGISTRY_SENTINEL_END in line:
+            end_idx = i
+    if begin_idx is None:
+        raise RuntimeError(
+            f"registry.py 缺少 sentinel {REGISTRY_SENTINEL_BEGIN!r}; "
+            f"请先人工插入 sentinel 再跑 codegen"
+        )
+    if end_idx is None:
+        raise RuntimeError(
+            f"registry.py 缺少 sentinel {REGISTRY_SENTINEL_END!r}; "
+            f"请先人工插入 sentinel 再跑 codegen"
+        )
+    if end_idx <= begin_idx:
+        raise RuntimeError(
+            f"registry.py sentinel 顺序错误: "
+            f"begin@{begin_idx + 1} 必须在 end@{end_idx + 1} 之前"
+        )
+
+    new_block = _render_registry_block(tds) + "\n"
+    new_lines = lines[: begin_idx + 1] + [new_block] + lines[end_idx:]
+    REGISTRY_PY.write_text("".join(new_lines), encoding="utf-8")
+
+
+def _check_registry() -> int:
+    """--check-registry: 派生期望块, 与磁盘文件 sentinel 间内容字符串比较.
+
+    不写盘. 一致 exit 0; 不一致 exit 1 并打 diff.
+    """
+    tds = [TypeDef.from_yaml_path(p) for p in sorted(DATA_DICT_DIR.glob("*.yaml"))]
+    expected = _render_registry_block(tds)
+    text = REGISTRY_PY.read_text(encoding="utf-8")
+    lines = text.splitlines(keepends=False)
+    begin_idx = end_idx = -1
+    for i, line in enumerate(lines):
+        if REGISTRY_SENTINEL_BEGIN in line:
+            begin_idx = i
+        elif REGISTRY_SENTINEL_END in line:
+            end_idx = i
+    if begin_idx < 0 or end_idx < 0:
+        print(f"[codegen] ✗ registry.py 缺少 sentinel", file=sys.stderr)
+        return 1
+    actual = "\n".join(lines[begin_idx + 1 : end_idx]).rstrip("\n")
+    expected = expected.rstrip("\n")
+    if actual == expected:
+        print(f"[codegen] ✓ registry _register_defaults 与 YAML 一致")
+        return 0
+    print(f"[codegen] ✗ registry _register_defaults 与 YAML 不一致:", file=sys.stderr)
+    _print_unified_diff(expected, actual)
+    return 1
+
+
+def _print_unified_diff(expected: str, actual: str) -> None:
+    """简易 unified diff 打印, 不依赖 difflib 以减少 import surface."""
+    import difflib
+
+    diff = difflib.unified_diff(
+        expected.splitlines(),
+        actual.splitlines(),
+        fromfile="expected (from YAML)",
+        tofile="actual (registry.py)",
+        lineterm="",
+    )
+    for line in diff:
+        print(line, file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--check-registry" in argv:
+        argv = [a for a in argv if a != "--check-registry"]
+        return _check_registry()
     verbose = "--quiet" not in argv
     py_files, md_files = generate_all(verbose=verbose)
     if verbose:
