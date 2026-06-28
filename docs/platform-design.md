@@ -655,6 +655,10 @@ for d in REGISTRY.by_frequency("daily"):
     print(d.name, d.schema_version)
 ```
 
+**Codegen-driven sync (`_register_defaults`)**:
+
+`registry.py` 中 `_register_defaults()` 函数体内的 `# codegen: begin` / `# codegen: end` sentinel 之间的 register 块由 `python -m alpha_backend.datasource.codegen` 从 `configs/data_dict/*.yaml` 自动派生, 不要手改. codegen 用反射 (`importlib.import_module("alpha_backend.datasource.schemas")`) 拿 pydantic_model 类, 从 YAML `storage` 后缀推断 `format` (`.parquet → parquet`, `.csv → csv`). CI / pre-commit 可用 `python -m alpha_backend.datasource.codegen --check-registry` 校验一致性, drift 时 exit 1 + 打 diff.
+
 #### 10.7.2 `DataFile` (`storage/io.py`)
 
 > Single-file physical I/O wrapper. Writes are gated by Pydantic strong validation; reads by `schema_version` strong validation.

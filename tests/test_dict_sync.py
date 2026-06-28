@@ -229,3 +229,58 @@ def test_yaml_loads_correctly() -> None:
     assert raw["schema_version"] == "1.0"
     assert raw["frequency"] == "daily"
     assert "trading_date" in {f["name"] for f in raw["fields"]}
+
+
+# ---------- 8. REGISTRY 与 YAML 双向同步 ----------
+
+
+def test_registry_matches_yamls(all_type_defs) -> None:
+    """每个 YAML 都对应一个 REGISTRY entry, 反之亦然.
+
+    校验 codegen 派生出的 _register_defaults 与 configs/data_dict 一一对应.
+    漏注册 / 多注册都会 fail (而不是 warn), 因为这是漂移而非首次初始化.
+    """
+    from alpha_backend.datasource.registry import REGISTRY
+
+    yaml_names = {td.name for td in all_type_defs}
+    registry_names = {d.name for d in REGISTRY.all()}
+
+    missing_in_registry = yaml_names - registry_names
+    extra_in_registry = registry_names - yaml_names
+    assert not missing_in_registry, (
+        f"YAML 存在但 REGISTRY 未注册: {sorted(missing_in_registry)}. "
+        f"请跑 `python -m alpha_backend.datasource.codegen` 重新生成 _register_defaults"
+    )
+    assert not extra_in_registry, (
+        f"REGISTRY 注册但 YAML 缺失: {sorted(extra_in_registry)}. "
+        f"请删除对应 YAML 后跑 codegen 清理, 或人工从 _register_defaults 移除"
+    )
+
+    # 进一步校验: 同一 DataType 的字段应与 YAML 派生一致
+    for td in all_type_defs:
+        if td.npy_class is not None:
+            continue
+        dt = REGISTRY.get(td.name)
+        assert dt.schema_version == td.schema_version, (
+            f"{td.name}: schema_version 不一致 "
+            f"(YAML={td.schema_version}, REGISTRY={dt.schema_version})"
+        )
+        assert dt.frequency == td.frequency, (
+            f"{td.name}: frequency 不一致 "
+            f"(YAML={td.frequency}, REGISTRY={dt.frequency})"
+        )
+        assert str(dt.storage_path) == td.storage, (
+            f"{td.name}: storage_path 不一致 "
+            f"(YAML={td.storage}, REGISTRY={dt.storage_path})"
+        )
+        assert dt.primary_key == td.primary_key, (
+            f"{td.name}: primary_key 不一致 "
+            f"(YAML={tuple(td.primary_key)}, REGISTRY={dt.primary_key})"
+        )
+        # format: 由 storage 后缀推断, 此处只校验一致
+        from alpha_backend.datasource.codegen import _format_from_storage
+        assert dt.format == _format_from_storage(td.storage), (
+            f"{td.name}: format 不一致 "
+            f"(storage={td.storage} → {_format_from_storage(td.storage)}, "
+            f"REGISTRY={dt.format})"
+        )
