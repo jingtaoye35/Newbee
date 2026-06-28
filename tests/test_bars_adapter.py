@@ -1,4 +1,4 @@
-"""`newbee.datasource.storage.bars_adapter` 单元测试."""
+"""`alpha_backend.datasource.storage.bars_adapter` 单元测试."""
 from __future__ import annotations
 
 import sys
@@ -11,19 +11,19 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.datasource.registry import REGISTRY  # noqa: E402
-from newbee.datasource.schemas.kdata import KData  # noqa: E402
-from newbee.datasource.storage.bars_adapter import Bars, load_bars  # noqa: E402
-from newbee.datasource.storage.io import DataFile  # noqa: E402
+from alpha_backend.datasource.registry import REGISTRY  # noqa: E402
+from alpha_backend.datasource.schemas.kdata import KData  # noqa: E402
+from alpha_backend.datasource.storage.bars_adapter import Bars, load_bars  # noqa: E402
+from alpha_backend.datasource.storage.io import DataFile  # noqa: E402
 
 
 @pytest.fixture
 def tmp_root(tmp_path: Path) -> Path:
-    """tmp_root 模拟 PROJECT_ROOT (data/ 在其下).
+    """tmp_root 模拟 PROJECT_ROOT (datas/ 在其下).
 
     load_bars 的 root 参数 = PROJECT_ROOT (与 DataFile 的约定一致).
     """
-    (tmp_path / "data").mkdir()
+    (tmp_path / "datas").mkdir()
     return tmp_path
 
 
@@ -68,7 +68,7 @@ def test_load_bars_pivot_shape(tmp_root: Path):
                 "volume": 100_000.0,
                 "close_adj": base_close * 0.5,
             })
-    _seed_kdata(tmp_root / "data" / "KData.parquet", rows)
+    _seed_kdata(tmp_root / "datas" / "KData.parquet", rows)
     bars = load_bars(
         stock_codes=["000001.SZ", "000002.SZ", "000003.SZ"],
         start=date(2024, 1, 1),
@@ -94,7 +94,7 @@ def test_load_bars_adj_uses_close_adj(tmp_root: Path):
          "open": 1.0, "high": 1.0, "low": 1.0, "close": 2.0,
          "amount": 0.0, "volume": 0.0, "close_adj": 99.0},
     ]
-    _seed_kdata(tmp_root / "data" / "KData.parquet", rows)
+    _seed_kdata(tmp_root / "datas" / "KData.parquet", rows)
     bars = load_bars(
         stock_codes=["000001.SZ"],
         start=date(2024, 1, 1),
@@ -112,7 +112,7 @@ def test_load_bars_raw_uses_close_for_adj_close(tmp_root: Path):
          "open": 1.0, "high": 1.0, "low": 1.0, "close": 5.0,
          "amount": 0.0, "volume": 0.0, "close_adj": 99.0},
     ]
-    _seed_kdata(tmp_root / "data" / "KData.parquet", rows)
+    _seed_kdata(tmp_root / "datas" / "KData.parquet", rows)
     bars = load_bars(
         stock_codes=["000001.SZ"],
         start=date(2024, 1, 1),
@@ -137,7 +137,7 @@ def test_load_bars_missing_cell_is_nan(tmp_root: Path):
          "open": 2.0, "high": 2.0, "low": 2.0, "close": 2.0,
          "amount": 0.0, "volume": 0.0, "close_adj": 2.0},
     ]
-    _seed_kdata(tmp_root / "data" / "KData.parquet", rows)
+    _seed_kdata(tmp_root / "datas" / "KData.parquet", rows)
     bars = load_bars(
         stock_codes=["000001.SZ", "000002.SZ"],
         start=date(2024, 1, 1),
@@ -163,7 +163,7 @@ def test_load_bars_dates_are_sorted_asc(tmp_root: Path):
          "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0,
          "amount": 0.0, "volume": 0.0, "close_adj": 1.0},
     ]
-    _seed_kdata(tmp_root / "data" / "KData.parquet", rows)
+    _seed_kdata(tmp_root / "datas" / "KData.parquet", rows)
     bars = load_bars(
         stock_codes=["000001.SZ"],
         start=date(2024, 1, 1),

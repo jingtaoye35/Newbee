@@ -17,7 +17,7 @@ import pytest
 import yaml
 from pydantic import BaseModel
 
-from newbee.datasource.codegen import (
+from alpha_backend.datasource.codegen import (
     DATA_DICT_DIR,
     DOCS_DIR,
     PROJECT_ROOT,
@@ -82,7 +82,7 @@ def test_yaml_fields_in_pydantic(all_type_defs) -> None:
     for td in all_type_defs:
         if td.npy_class is not None:
             continue  # npy 类型跳过
-        mod = importlib.import_module(f"newbee.datasource.schemas.{_to_module_name(td.name)}")
+        mod = importlib.import_module(f"alpha_backend.datasource.schemas.{_to_module_name(td.name)}")
         cls_name = _to_class_name(td.name)
         cls: type[BaseModel] = getattr(mod, cls_name)
         pyd_fields = cls.model_fields
@@ -122,7 +122,7 @@ def test_pydantic_fields_in_yaml(all_type_defs) -> None:
     for td in all_type_defs:
         if td.npy_class is not None:
             continue
-        mod = importlib.import_module(f"newbee.datasource.schemas.{_to_module_name(td.name)}")
+        mod = importlib.import_module(f"alpha_backend.datasource.schemas.{_to_module_name(td.name)}")
         cls_name = _to_class_name(td.name)
         cls: type[BaseModel] = getattr(mod, cls_name)
         pyd_names = set(cls.model_fields.keys())
@@ -190,7 +190,7 @@ def test_yaml_metadata_reflects_in_schema(all_type_defs) -> None:
     for td in all_type_defs:
         if td.npy_class is not None:
             continue
-        mod = importlib.import_module(f"newbee.datasource.schemas.{_to_module_name(td.name)}")
+        mod = importlib.import_module(f"alpha_backend.datasource.schemas.{_to_module_name(td.name)}")
         cls: type[BaseModel] = getattr(mod, _to_class_name(td.name))
         pyd_names = set(cls.model_fields.keys())
         for pk in td.primary_key:

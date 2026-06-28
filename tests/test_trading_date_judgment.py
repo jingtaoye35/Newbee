@@ -16,7 +16,7 @@ from pathlib import Path
 PROJECT_ROOT = Path("/Users/yejingtao/JohnsonProject/Newbee")
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.datasource.trading_date import (  # noqa: E402
+from alpha_backend.datasource.trading_date import (  # noqa: E402
     is_trading_day,
     latest_trading_day,
     next_trading_day,

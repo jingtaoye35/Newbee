@@ -8,7 +8,7 @@ from pathlib import Path
 PROJECT_ROOT = Path("/Users/yejingtao/JohnsonProject/Newbee")
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.datasource.calendar import latest_trading_day  # noqa: E402
+from alpha_backend.datasource.calendar import latest_trading_day  # noqa: E402
 
 
 def test_tuesday_after_close_returns_tuesday():
@@ -62,7 +62,7 @@ def test_trading_day_with_holiday_returns_last_session():
     # 端午假期 (按 cal): 2026-06-19 周五收盘, 2026-06-22 周一也是 holiday (A 股特殊)
     # 注: exchange_calendars 默认不内置中国节假日, 但本测试仅验证 prev_trading_day 逻辑.
     # 周一非交易日 → 应回退到周五.
-    from newbee.datasource.calendar import is_trading_day
+    from alpha_backend.datasource.calendar import is_trading_day
 
     if not is_trading_day(date(2026, 6, 22)):
         assert latest_trading_day(

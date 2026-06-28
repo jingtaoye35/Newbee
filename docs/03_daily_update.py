@@ -10,7 +10,7 @@
     /opt/anaconda3/envs/py312/bin/python docs/03_daily_update.py [--dry-run]
 
 注意: 首次运行前需要先跑 `scripts/init_universe.py` 与 `scripts/fetch_data.py`
-至少一次, 让 `data/raw/` 与 `data/adj/` 有内容; 否则会从 universe pool 的
+至少一次, 让 `datas/raw/` 与 `datas/adj/` 有内容; 否则会从 universe pool 的
 created_at 开始全量回填.
 """
 from __future__ import annotations
@@ -23,15 +23,15 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.data.fetch_state import (  # noqa: E402
+from alpha_backend.datas.fetch_state import (  # noqa: E402
     is_universe_stale,
     progress_summary,
     read_state,
 )
-from newbee.data.universe import StockPool  # noqa: E402
-from newbee.data.incremental import build_plan, run_update  # noqa: E402
-from newbee.data.calendar import latest_trading_day  # noqa: E402
-from newbee.utils import logger  # noqa: E402
+from alpha_backend.datas.universe import StockPool  # noqa: E402
+from alpha_backend.datas.incremental import build_plan, run_update  # noqa: E402
+from alpha_backend.datas.calendar import latest_trading_day  # noqa: E402
+from alpha_backend.utils import logger  # noqa: E402
 
 
 def print_status(root: Path) -> None:
@@ -60,7 +60,7 @@ def print_status(root: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="每日增量拉取演示")
-    parser.add_argument("--data-root", type=Path, default=PROJECT_ROOT / "data")
+    parser.add_argument("--datas-root", type=Path, default=PROJECT_ROOT / "datas")
     parser.add_argument(
         "--dry-run",
         action="store_true",

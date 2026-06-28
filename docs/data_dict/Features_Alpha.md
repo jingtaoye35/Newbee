@@ -4,7 +4,7 @@
 
 - **schema_version**: `1.0`
 - **frequency**: `daily`
-- **storage**: `data/_npy/`
+- **storage**: `datas/_npy/`
 - **primary_key**: ``
 
 ## npy cache metadata
@@ -15,8 +15,8 @@
 layout: matrix
 shape:
 - N
-dir_template: data/{category}/{name}/{YYYY-MM-DD}.npy
-manifest: data/{category}/{name}/manifest.json
+dir_template: datas/{category}/{name}/{YYYY-MM-DD}.npy
+manifest: datas/{category}/{name}/manifest.json
 manifest_fields:
 - universe_sha
 - dates

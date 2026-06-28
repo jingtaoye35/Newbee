@@ -1,6 +1,6 @@
 # Newbee Platform Architecture Design
 
-> **Scope**: any modification to `newbee/`, `configs/`, `scripts/`, `docs/*.py`.
+> **Scope**: any modification to `alpha_backend/`, `configs/`, `scripts/`, `docs/*.py`.
 
 ## 0. Document Metadata
 
@@ -13,7 +13,7 @@
 
 Newbee is a **self-built, verifiable, minimal** quantitative research / backtest platform. Three core goals, ordered by priority:
 
-1. **End-to-end readability** — no closed-source black boxes; every step on the critical path (data → factor → portfolio → backtest) is readable in code.
+1. **End-to-end readability** — no closed-source black boxes; every step on the critical path (datas → factor → portfolio → backtest) is readable in code.
 2. **Data reproducibility** — given the same universe + date range, results are bit-identical across runs and machines.
 3. **AI-collaborative maintenance** — Claude Code modifications are bounded by strong constraints that prevent schema / contract / convention drift.
 
@@ -23,26 +23,26 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 
 | Milestone | Scope | Status |
 |---|---|---|
-| **M1a** | Skeleton + data layer (legacy `StockPool`) | ✅ |
+| **M1a** | Skeleton + datas layer (legacy `StockPool`) | ✅ |
 | **M1b** | First factor (`momentum_20`) + alpha backtest | ✅ |
 | **M1c** | Portfolio backtest (mean-variance + cost + turnover constraints) | ✅ |
 | **M1d** | Closed loop + protection (integration tests + docs) | ✅ |
 | **M2** | Data module refactor (long-format parquet + YAML SoT + registry + services) | ✅ (merged 2026-06-24) |
 | M2+ | Live trading (broker adapter, order management, risk monitoring) | ⏳ |
-| M3+ | Factor factory (ML, NLP, alternative data) | ⏳ |
+| M3+ | Factor factory (ML, NLP, alternative datas) | ⏳ |
 | M4+ | Multi-strategy portfolio (capital allocation, meta-strategy) | ⏳ |
 
 ## 3. Platform Layers & Call Relationships
 
 ```
                     ┌─────────────────────────────────┐
-   User / Script    │  newbee CLI · scripts/*.py     │   ← Entry Layer
+   User / Script    │  alpha_backend CLI · scripts/*.py     │   ← Entry Layer
                     │  docs/*.py (Jupyter-style tutorials)
                     └────────────┬────────────────────┘
                                  │
                     ┌────────────▼────────────────────┐
    Config Layer     │  configs/{factors,strategies}/*.yaml
-                    │  + newbee.utils.config loader
+                    │  + alpha_backend.utils.config loader
                     └────────────┬────────────────────┘
                                  │
         ┌────────────────────────┼────────────────────────┐
@@ -68,27 +68,27 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
    └─────────────┘  └──────────────┘  └────────┬─────────┘
                                                 │
                                 ┌───────────────▼──────────────┐
-   Storage (data/)              │  data/KData.parquet          │   ← Persistence Layer
-                                │  data/Trade_Status.parquet   │
-                                │  data/Stock_Basic_Data.parquet     │
-                                │  data/Universe.parquet       │
-                                │  data/Trading_Date.csv       │
-                                │  data/_Manifest/Data_State.json│
-                                │  data/alpha/<sid>/{date}.npy │
-                                │  data/portfolio/results/*.parquet│
+   Storage (datas/)              │  datas/KData.parquet          │   ← Persistence Layer
+                                │  datas/Trade_Status.parquet   │
+                                │  datas/Stock_Basic_Data.parquet     │
+                                │  datas/Universe.parquet       │
+                                │  datas/Trading_Date.csv       │
+                                │  datas/_Manifest/Data_State.json│
+                                │  datas/alpha/<sid>/{date}.npy │
+                                │  datas/portfolio/results/*.parquet│
                                 └──────────────────────────────┘
 ```
 
 **Call rules (hard constraints)**:
 
 - The entry layer calls the domain layer and the engine layer only — never the persistence layer directly.
-- Domain layers do **not** call each other: `factor` does not import `portfolio`; `portfolio` does not import `data` business modules.
-- The data layer is infrastructure for every other layer, but the reverse is forbidden.
-- The engine layer (`engines/`) orchestrates domain + data layers, produces final results, writes them back to persistence.
+- Domain layers do **not** call each other: `factor` does not import `portfolio`; `portfolio` does not import `datas` business modules.
+- The datas layer is infrastructure for every other layer, but the reverse is forbidden.
+- The engine layer (`engines/`) orchestrates domain + datas layers, produces final results, writes them back to persistence.
 
 ## 4. Module Manifest & Responsibilities
 
-### 4.1 Data Layer — `newbee/datasource/`
+### 4.1 Data Layer — `alpha_backend/datasource/`
 
 > See §10 for deep details (directory layout, field contracts, API surface, error hierarchy, change flow).
 
@@ -97,7 +97,7 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 | `registry.py` | `DataType` + `DataRegistry` (frozen dataclass + singleton) |
 | `codegen.py` | YAML → Pydantic + Markdown |
 | `calendar.py` | Trading-day calendar (wrapper around `exchange_calendars`) |
-| `cli.py` | `newbee data` subcommands (status / update / init-universe / codegen / verify ) |
+| `cli.py` | `alpha_backend datas` subcommands (status / update / init-universe / codegen / verify ) |
 | `schemas/*.py` | Pydantic `BaseModel` (codegen output — **must not be hand-edited**) |
 | `storage/io.py` | `DataFile` physical I/O (predicate pushdown, atomic write; parquet + CSV backends) |
 | `storage/state.py` | `StateTracker` persistence for `Data_State.json` |
@@ -105,7 +105,7 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 | `sources/akshare.py` | Source adapter (`sina` / `em` / `tx`) |
 | `service/<type>.py` | Per-type facade (`KDataService` / `UniverseService` / ...) |
 
-### 4.2 Factor Layer — `newbee/factors/`
+### 4.2 Factor Layer — `alpha_backend/factors/`
 
 > A factor is a pure function `(prices, asof) -> ndarray(N,)`. Cross-sectional output; `NaN` means inactive.
 
@@ -119,11 +119,11 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 **Contracts (hard constraints)**:
 
 1. `factor.compute(asof, ...) -> ndarray(N,)` — shape is strictly `universe.size()`.
-2. `NaN` positions = inactive / missing data — **never** fill with 0.
-3. **Strictly no look-ahead** — output at time `t` may only depend on data available at `≤ t`.
+2. `NaN` positions = inactive / missing datas — **never** fill with 0.
+3. **Strictly no look-ahead** — output at time `t` may only depend on datas available at `≤ t`.
 4. Register via `@register`; no global state. A new factor = one file under `classic/<name>.py`.
 
-### 4.3 Portfolio Layer — `newbee/portfolio/`
+### 4.3 Portfolio Layer — `alpha_backend/portfolio/`
 
 | File | Responsibility |
 |---|---|
@@ -140,7 +140,7 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 2. `PortfolioState.positions` is `ndarray(N,)` — **not** share counts; M1 does not model share counts.
 3. Cost is deducted on rebalance days (after NAV accumulation); no circular interaction with returns.
 
-### 4.4 Engine Layer — `newbee/engines/`
+### 4.4 Engine Layer — `alpha_backend/engines/`
 
 | File | Responsibility |
 |---|---|
@@ -156,14 +156,14 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 
 **Result file conventions**:
 
-- `data/portfolio/results/<strategy>_<version>_nav.parquet` — Phase B NAV curve
-- `data/alpha/<strategy_id>/{YYYY-MM-DD}.npy` + `manifest.json` — Phase A cache
+- `datas/portfolio/results/<strategy>_<version>_nav.parquet` — Phase B NAV curve
+- `datas/alpha/<strategy_id>/{YYYY-MM-DD}.npy` + `manifest.json` — Phase A cache
 
-### 4.5 Utility Layer — `newbee/utils/`
+### 4.5 Utility Layer — `alpha_backend/utils/`
 
 | File | Responsibility |
 |---|---|
-| `__init__.py` | Exports `logger` proxy (`from newbee.utils import logger`) |
+| `__init__.py` | Exports `logger` proxy (`from alpha_backend.utils import logger`) |
 | `_logger.py` | Proxy implementation (pulls `__name__` from the call stack, attaches handler on first access) |
 | `config.py` | YAML loading + path constants + `strategy_id()` derivation |
 
@@ -171,7 +171,7 @@ Out of scope for the current milestone: live trading (M2+), factor factory (M3+)
 
 ```python
 # ✅ Correct — go through the proxy
-from newbee.utils import logger
+from alpha_backend.utils import logger
 logger.info("KData updated", extra={"rows": n})
 
 # ❌ Wrong
@@ -182,13 +182,13 @@ print(...)                              # not captured by tests
 
 Default format: `%(asctime)s | %(levelname)-7s | %(name)s | %(message)s`; override via the `LOG_FORMAT` env var.
 
-### 4.6 Entry Layer — `newbee/cli.py` + `scripts/*.py`
+### 4.6 Entry Layer — `alpha_backend/cli.py` + `scripts/*.py`
 
 ```
-newbee (CLI entry, registered in pyproject.toml)
-  ├── newbee backtest <config>        # Portfolio backtest
-  ├── newbee alpha   <config>         # Alpha backtest
-  └── newbee data    <sub>            # Data subcommands (forwards to newbee.datasource.cli)
+alpha_backend (CLI entry, registered in pyproject.toml)
+  ├── alpha_backend backtest <config>        # Portfolio backtest
+  ├── alpha_backend alpha   <config>         # Alpha backtest
+  └── alpha_backend datas    <sub>            # Data subcommands (forwards to alpha_backend.datasource.cli)
         ├── status                          # Coverage state
         ├── update [--type]                 # Incremental fetch
         ├── init-universe                   # Initialize stock pool
@@ -196,23 +196,23 @@ newbee (CLI entry, registered in pyproject.toml)
         └── verify                          # Run dict_sync + storage_io + state_tracker tests
 ```
 
-`scripts/*.py` (`init_universe.py`, `fetch_data.py`, `fetch_incremental.py`, `run_alpha_backtest.py`, `run_portfolio_backtest.py`) are thin wrappers around `newbee.cli` or `newbee.datasource.cli`. They are kept for cron / Makefile convenience but their functionality is fully covered by the `newbee` CLI.
+`scripts/*.py` (`init_universe.py`, `fetch_data.py`, `fetch_incremental.py`, `run_alpha_backtest.py`, `run_portfolio_backtest.py`) are thin wrappers around `alpha_backend.cli` or `alpha_backend.datasource.cli`. They are kept for cron / Makefile convenience but their functionality is fully covered by the `alpha_backend` CLI.
 
-### 4.7 Adapter Layer — `newbee/datasource/storage/{bars_adapter,pool_adapter}.py`
+### 4.7 Adapter Layer — `alpha_backend/datasource/storage/{bars_adapter,pool_adapter}.py`
 
 矩阵化封装, 让 `engines/backtest_*` 和 `cli` 用熟悉的 `(T, N)` 视角读数据,
-而物理存储仍是 `data/<Type>.parquet` (long format):
+而物理存储仍是 `datas/<Type>.parquet` (long format):
 
 - `bars_adapter.load_bars(stock_codes, start, end, *, root, kind="adj")` →
   `Bars(dates, stock_ids, open, high, low, close, volume, adj_close)` (T, N matrices)
-  - `root` 是 `PROJECT_ROOT` (data/ 在其下); 内部走 `DataFile(KData).read`
+  - `root` 是 `PROJECT_ROOT` (datas/ 在其下); 内部走 `DataFile(KData).read`
     + `pandas.pivot` 出矩阵
   - `kind="adj"` → `adj_close = close_adj`; `kind="raw"` → `adj_close = close`
   - `Bars.matrix` 属性: (T, N, 6) 堆叠 [open, high, low, close, volume, adj_close],
     供 `bars.matrix[:, :, 5]` 单切片
   - `Bars.returns(kind)` 默认 `simple`, 第一行强制 NaN (无前一天)
 
-- `pool_adapter.StockPool.load(path)` → `StockPool` 提供 legacy `newbee.data.universe.StockPool` API
+- `pool_adapter.StockPool.load(path)` → `StockPool` 提供 legacy `alpha_backend.datas.universe.StockPool` API
   - `stock_ids` (list of 9-char stock_code), `size()`, `export()` (含 stock_code 列),
     `active_mask(asof)` (基于 ipo_date), `idx_of()` / `stock_of()`, `add()` (幂等), `universe_sha()`
   - 物理存储仍走 `DataFile(Universe)` (append-only, schema_version 校验)
@@ -246,14 +246,14 @@ PortfolioState update (positions + cash + history)
   ↓
 NAV curve + turnover + cost
   ↓
-data/portfolio/results/<sid>_nav.parquet
+datas/portfolio/results/<sid>_nav.parquet
 ```
 
 ### 5.2 Daily Incremental Update
 
 ```
-newbee data status         # Inspect Data_State.json
-newbee data update         # Pull all daily types by default
+alpha_backend datas status         # Inspect Data_State.json
+alpha_backend datas update         # Pull all daily types by default
   ├── KDataService.daily_update
   │     ├── resume_range → (start, end)
   │     ├── fetch_kdata(start, end, source)
@@ -272,18 +272,18 @@ newbee data update         # Pull all daily types by default
 |---|---|---|
 | Factor | `configs/factors/<name>.yaml` | `momentum_20.yaml` |
 | Strategy | `configs/strategies/<name>.yaml` | `momentum_baseline.yaml` |
-| Data | `configs/data/<name>.yaml` (M3+) | — |
+| Data | `configs/datas/<name>.yaml` (M3+) | — |
 
 **Field naming**:
 
 - Factor config top level: `factor.{name, version, type}`, `compute.{window, field, ...}`.
-- Strategy config top level: `name, version`, then `factor.*, data.*, portfolio.*, cost.*, cache.*`.
+- Strategy config top level: `name, version`, then `factor.*, datas.*, portfolio.*, cost.*, cache.*`.
 - `strategy_id = md5(name|version|factor.name|portfolio.optimizer)` — derived, not hand-written.
 
 ### 6.2 Config Loading
 
 ```python
-from newbee.utils.config import load_config, strategy_id, resolve_data_range
+from alpha_backend.utils.config import load_config, strategy_id, resolve_data_range
 
 cfg = load_config("configs/strategies/momentum_baseline.yaml")
 sid = strategy_id(cfg)            # → key for alpha_store
@@ -302,7 +302,7 @@ start_s, end_s = resolve_data_range(cfg)  # → (start, end)
 | `test_kdata_service.py` | Data layer | `KDataService` end-to-end |
 | `test_trade_status_service.py` | Data layer | `TradeStatusService` end-to-end |
 | `test_universe_service.py` | Data layer | `UniverseService` end-to-end |
-| `test_pit.py` | Legacy data layer (DEPRECATED) | PIT unit + integration |
+| `test_pit.py` | Legacy datas layer (DEPRECATED) | PIT unit + integration |
 | `test_no_lookahead.py` | Factor layer | Killer test: corrupt `t+1..t+20` randomly, assert t-time factor output is **bit-identical** |
 | `test_optimizer.py` | Portfolio layer | Constraint projection + mean-variance + edge cases |
 | `test_append_fetch.py` | Data layer | Append-only incremental + fetch continuity |
@@ -331,7 +331,7 @@ pytest tests/test_no_lookahead.py -q
 
 - `test_no_lookahead.py` **must** pass. One failure = a look-ahead bug; never let it through (uses strict `np.array_equal`, not approximation).
 - Business code must not call `print(...)`; otherwise tests cannot capture logs.
-- Data layer tests isolate via `tmp_path`; do not pollute `data/`.
+- Data layer tests isolate via `tmp_path`; do not pollute `datas/`.
 
 ## 8. Design Principles (Cross-Layer)
 
@@ -343,20 +343,20 @@ pytest tests/test_no_lookahead.py -q
 | **Atomic write** | All disk writes go through `tempfile + os.replace`; concurrency is gated by `fcntl` lock. |
 | **Schema guard** | `DataFile.read()` forces `state.schema_version == dtype.schema_version` on startup; mismatch raises immediately. |
 | **Separation of concerns** | KData owns prices; Trade_Status owns trading state; Stock_Basic_Data owns adjustment; Universe owns the pool. |
-| **Strict PIT** | Financial data keyed by `(stock_id, end_date, ann_date, field)`; visible only when `ann_date <= asof`. |
-| **Look-ahead protection** | Factor computation may only use data available at `≤ asof`; verified by `test_no_lookahead`. |
-| **Logger via proxy** | Business code uses `from newbee.utils import logger`; never `logging.getLogger`. |
-| **Paths via registry** | No hard-coded `Path("data/...")`; use `REGISTRY.get(<Type>).storage_path`. |
+| **Strict PIT** | Financial datas keyed by `(stock_id, end_date, ann_date, field)`; visible only when `ann_date <= asof`. |
+| **Look-ahead protection** | Factor computation may only use datas available at `≤ asof`; verified by `test_no_lookahead`. |
+| **Logger via proxy** | Business code uses `from alpha_backend.utils import logger`; never `logging.getLogger`. |
+| **Paths via registry** | No hard-coded `Path("datas/...")`; use `REGISTRY.get(<Type>).storage_path`. |
 
 ## 9. Naming Conventions
 
 | Location | Style | Example |
 |---|---|---|
-| `data/` filenames | Pascal_Snake_Case | `KData.parquet`, `Trade_Status.parquet` |
+| `datas/` filenames | Pascal_Snake_Case | `KData.parquet`, `Trade_Status.parquet` |
 | `configs/data_dict/*.yaml` | Pascal_Snake_Case | `KData.yaml`, `Stock_Basic_Data.yaml` |
 | `docs/data_dict/*.md` | Pascal_Snake_Case | `KData.md` |
-| `data/_Manifest/` | Underscore prefix (hidden) | `Data_State.json` |
-| Python modules / packages | snake_case (PEP 8) | `newbee/datasource/storage/io.py` |
+| `datas/_Manifest/` | Underscore prefix (hidden) | `Data_State.json` |
+| Python modules / packages | snake_case (PEP 8) | `alpha_backend/datasource/storage/io.py` |
 | Classes | PascalCase | `DataFile`, `KDataService` |
 | Functions / variables | snake_case | `read_window`, `stock_code` |
 | Constants | UPPER_SNAKE_CASE | `DEFAULT_DATA_ROOT`, `ALPHA_DIR_NAME` |
@@ -366,21 +366,21 @@ pytest tests/test_no_lookahead.py -q
 
 ## 10. Data Layer (Detailed)
 
-> This section is the comprehensive specification of the data layer. It absorbs the entirety of the former `docs/data-architecture.md`.
+> This section is the comprehensive specification of the datas layer. It absorbs the entirety of the former `docs/datas-architecture.md`.
 
 ### 10.1 Directory & File Layout
 
-#### `data/`
+#### `datas/`
 
 ```
-data/
+datas/
 ├── KData.parquet              # Daily K-line (no suffix = daily; post-adjusted close_adj)
 ├── KData_M1.parquet           # 1-minute K-line
 ├── KData_M5.parquet           # 5-minute K-line (reserved)
 ├── Trade_Status.parquet       # Trading status (suspended / ST / activate)
 ├── Stock_Basic_Data.parquet         # Adjustment factor
 ├── Universe.parquet           # Stock pool
-├── Trading_Date.csv           # Trading-day calendar (CSV; reference data)
+├── Trading_Date.csv           # Trading-day calendar (CSV; reference datas)
 ├── PIT.parquet                # Financial disclosures
 │
 ├── Features/                  # npy matrix, kept as-is
@@ -392,8 +392,8 @@ data/
 │   ├── Data_State.json        # Per-type coverage state
 │   └── Data_Dict_Index.json   # Dictionary index
 │
-├── models/                    # ⛔ Outside the data module scope, stays lowercase
-└── repr/                      # ⛔ Outside the data module scope, stays lowercase
+├── models/                    # ⛔ Outside the datas module scope, stays lowercase
+└── repr/                      # ⛔ Outside the datas module scope, stays lowercase
 ```
 
 #### `configs/data_dict/`
@@ -426,14 +426,14 @@ docs/data_dict/
 └── Features_Alpha.md
 ```
 
-> **Operator walkthrough**: for a procedural guide on how to write data into `data/` (which CLI commands to run, how to read `data status`, common operations, troubleshooting), see [`docs/user-manual.md`](user-manual.md). This section (§10) is the design specification; the user manual is the operator-facing entry point.
+> **Operator walkthrough**: for a procedural guide on how to write datas into `datas/` (which CLI commands to run, how to read `datas status`, common operations, troubleshooting), see [`docs/user-manual.md`](user-manual.md). This section (§10) is the design specification; the user manual is the operator-facing entry point.
 
-#### `newbee/datasource/`
+#### `alpha_backend/datasource/`
 
-> The package is named `datasource` (singular), distinct from the physical `data/` directory.
+> The package is named `datasource` (singular), distinct from the physical `datas/` directory.
 
 ```
-newbee/datasource/
+alpha_backend/datasource/
 ├── schemas/                   # codegen output, Pydantic BaseModel
 │   ├── kdata.py
 │   ├── kdata_m1.py
@@ -480,13 +480,13 @@ Decision rule: codes starting with `6` or `9` → `.SH`; codes starting with `0`
 
 ### 10.4 Field Dictionary Triad
 
-Every data type's field definition is expressed by three files working in concert:
+Every datas type's field definition is expressed by three files working in concert:
 
 ```
 configs/data_dict/KData.yaml          ← source of truth (human / AI edit entry)
         │ codegen
         ▼
-newbee/datasource/schemas/kdata.py    ← Pydantic BaseModel (runtime strong validation)
+alpha_backend/datasource/schemas/kdata.py    ← Pydantic BaseModel (runtime strong validation)
         │ reflect
         ▼
 docs/data_dict/KData.md               ← human-readable dictionary (auto-generated)
@@ -495,7 +495,7 @@ docs/data_dict/KData.md               ← human-readable dictionary (auto-genera
 **Change flow**:
 
 1. Edit `configs/data_dict/<Type>.yaml`.
-2. Run `python -m newbee.datasource.codegen` to regenerate Pydantic and the dictionary Markdown.
+2. Run `python -m alpha_backend.datasource.codegen` to regenerate Pydantic and the dictionary Markdown.
 3. Run `pytest tests/test_dict_sync.py -q` — the bidirectional consistency check must pass.
 4. Commit YAML + generated Pydantic + dictionary Markdown as a triad.
 
@@ -517,7 +517,7 @@ docs/data_dict/KData.md               ← human-readable dictionary (auto-genera
 
 Primary key: `(trading_date, stock_code)`.
 
-**Adjustment convention**: `close_adj = close * adj_factor` (provided directly by the source data; no separate pre-adjusted price is used). All OHLCV is stored in **unadjusted** form. To derive the pre-adjusted close, use `close_adj / adj_factor`.
+**Adjustment convention**: `close_adj = close * adj_factor` (provided directly by the source datas; no separate pre-adjusted price is used). All OHLCV is stored in **unadjusted** form. To derive the pre-adjusted close, use `close_adj / adj_factor`.
 
 #### 10.5.2 Trade_Status
 
@@ -537,10 +537,10 @@ Primary key: `(trading_date, stock_code)`.
 |---|---|---|---|
 | `trading_date` | string | N | 10-char ISO date |
 | `stock_code` | string | N | 9-char code |
-| `adj_factor` | float64 | Y | Adjustment factor `= KData.close_adj / KData.close`; populated by `newbee data populate-stock-basic-adj`; `None` for stocks with no `close_adj` (e.g. `600000.SH`) |
-| `limit_upper_price` | float32 | Y | 涨停价 (nullable; future data source) |
-| `limit_lower_price` | float32 | Y | 跌停价 (nullable; future data source) |
-| `sw_industry` | string | Y | 申万一级行业 (nullable; future data source) |
+| `adj_factor` | float64 | Y | Adjustment factor `= KData.close_adj / KData.close`; populated by `alpha_backend datas populate-stock-basic-adj`; `None` for stocks with no `close_adj` (e.g. `600000.SH`) |
+| `limit_upper_price` | float32 | Y | 涨停价 (nullable; future datas source) |
+| `limit_lower_price` | float32 | Y | 跌停价 (nullable; future datas source) |
+| `sw_industry` | string | Y | 申万一级行业 (nullable; future datas source) |
 | `total_share` | float64 | Y | 总股本 (流通股 + 非流通股) |
 | `turnover` | float64 | Y | 日换手率 `volume / total_share` |
 
@@ -562,20 +562,20 @@ Primary key: `(trading_date, stock_code)`.
 |---|---|---|---|
 | `trading_date` | string | N | 10-char ISO date, e.g. `2024-01-02` |
 
-Primary key: `("trading_date",)`. `frequency = "static"` (the calendar is a reference dataset, not a per-bar observation). The on-disk file is `data/Trading_Date.csv` (CSV format — see §10.5.6). No `Service` or CLI subcommand is shipped for `Trading_Date`; the CSV is expected to be populated by ad-hoc scripts or a follow-up change.
+Primary key: `("trading_date",)`. `frequency = "static"` (the calendar is a reference dataset, not a per-bar observation). The on-disk file is `datas/Trading_Date.csv` (CSV format — see §10.5.6). No `Service` or CLI subcommand is shipped for `Trading_Date`; the CSV is expected to be populated by ad-hoc scripts or a follow-up change.
 
 #### 10.5.6 Format Convention
 
-Every data type's YAML MAY declare a `format` field. The value is one of:
+Every datas type's YAML MAY declare a `format` field. The value is one of:
 
 | `format` | On-disk file | I/O backend | Use case |
 |---|---|---|---|
-| `parquet` (default) | `data/<Type>.parquet` | `pyarrow.parquet` (predicate pushdown, metadata scan) | All observation-shaped data (OHLCV, status, PIT, ...) |
-| `csv` | `data/<Type>.csv` | `pandas.read_csv` / `DataFrame.to_csv` (in-memory filtering) | Small reference data (calendars, lookup tables — typically ≤ 1 MB) |
+| `parquet` (default) | `datas/<Type>.parquet` | `pyarrow.parquet` (predicate pushdown, metadata scan) | All observation-shaped datas (OHLCV, status, PIT, ...) |
+| `csv` | `datas/<Type>.csv` | `pandas.read_csv` / `DataFrame.to_csv` (in-memory filtering) | Small reference datas (calendars, lookup tables — typically ≤ 1 MB) |
 
-The `DataFile` class branches on `dtype.format`: parquet types use `pyarrow` exclusively; CSV types use `pandas` exclusively. The two backends are not mixed within a single method. CSV-backed types are intentionally small enough to load fully on every read; the system does not enforce a size limit at runtime (the `format: csv` declaration is the contract that the file is small by construction). See `openspec/specs/data-file-io/spec.md` for the full behavioural contract.
+The `DataFile` class branches on `dtype.format`: parquet types use `pyarrow` exclusively; CSV types use `pandas` exclusively. The two backends are not mixed within a single method. CSV-backed types are intentionally small enough to load fully on every read; the system does not enforce a size limit at runtime (the `format: csv` declaration is the contract that the file is small by construction). See `openspec/specs/datas-file-io/spec.md` for the full behavioural contract.
 
-### 10.6 State Tracking — `data/_Manifest/Data_State.json`
+### 10.6 State Tracking — `datas/_Manifest/Data_State.json`
 
 Replaces the legacy `fetch_state.json`, per-type granularity, carrying `schema_version`:
 
@@ -601,7 +601,7 @@ Replaces the legacy `fetch_state.json`, per-type granularity, carrying `schema_v
 }
 ```
 
-**Hard constraint**: `DataFile.read()` enforces `state.types[<type>].schema_version == schemas/<type>.schema_version` on startup. Any mismatch raises `SchemaVersionError` immediately, preventing silent reads of incompatible data.
+**Hard constraint**: `DataFile.read()` enforces `state.types[<type>].schema_version == schemas/<type>.schema_version` on startup. Any mismatch raises `SchemaVersionError` immediately, preventing silent reads of incompatible datas.
 
 ### 10.7 Core API
 
@@ -610,13 +610,13 @@ Replaces the legacy `fetch_state.json`, per-type granularity, carrying `schema_v
 ```python
 @dataclass(frozen=True)
 class DataType:
-    """Immutable metadata for a single data type. Frozen guarantees no post-registration mutation."""
+    """Immutable metadata for a single datas type. Frozen guarantees no post-registration mutation."""
 
     name: str                          # "KData" / "Stock_Basic_Data" / "Trading_Date"
     schema_version: str                # "1.0"
     frequency: str                     # "daily" | "1min" | "5min" | "static" | ...
     format: str                        # "parquet" (default) | "csv"
-    storage_path: Path                 # data/KData.parquet / data/Trading_Date.csv
+    storage_path: Path                 # datas/KData.parquet / datas/Trading_Date.csv
     primary_key: tuple[str, ...]       # ("trading_date", "stock_code") or ("trading_date",)
     pydantic_model: type[BaseModel]    # KData / Stock_Basic_Data / TradingDate / ...
 
@@ -645,11 +645,11 @@ REGISTRY.register(TRADING_DATE)  # format="csv"
 **Usage**:
 
 ```python
-from newbee.datasource.registry import REGISTRY
+from alpha_backend.datasource.registry import REGISTRY
 
 dtype = REGISTRY.get("KData")
 print(dtype.primary_key)   # ('trading_date', 'stock_code')
-print(dtype.storage_path)  # PosixPath('data/KData.parquet')
+print(dtype.storage_path)  # PosixPath('datas/KData.parquet')
 
 for d in REGISTRY.by_frequency("daily"):
     print(d.name, d.schema_version)
@@ -662,7 +662,7 @@ for d in REGISTRY.by_frequency("daily"):
 ```python
 @dataclass(frozen=True)
 class CoverageStats:
-    """Physical statistics of one data file."""
+    """Physical statistics of one datas file."""
 
     type_name: str
     schema_version: str
@@ -676,7 +676,7 @@ class CoverageStats:
     updated_at: str                 # ISO datetime
 
 class DataFile:
-    """Physical-file wrapper for one data type."""
+    """Physical-file wrapper for one datas type."""
 
     def __init__(self, dtype: DataType, *, root: Path | None = None) -> None: ...
 ```
@@ -692,7 +692,7 @@ def read(
     stock_codes: list[str] | None = None,
     columns: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Read data filtered by predicates.
+    """Read datas filtered by predicates.
 
     Args:
         start: ISO `YYYY-MM-DD`, inclusive lower bound; None = no lower bound.
@@ -707,13 +707,13 @@ def read(
     Raises:
         FileNotFoundError: parquet file is missing.
         SchemaVersionError: disk schema_version != dtype.schema_version.
-        SchemaValidationError: disk data fails Pydantic validation.
+        SchemaValidationError: disk datas fails Pydantic validation.
         ValueError: start > end or invalid date format.
 
     Implementation:
         - pyarrow.dataset predicate pushdown (start/end/stock_codes → filter).
         - Column pruning (pyarrow reads only requested columns).
-        - Pydantic validation on output, to detect manually corrupted disk data.
+        - Pydantic validation on output, to detect manually corrupted disk datas.
     """
 ```
 
@@ -737,8 +737,8 @@ def read(
 **Usage**:
 
 ```python
-from newbee.datasource.registry import REGISTRY
-from newbee.datasource.storage.io import DataFile
+from alpha_backend.datasource.registry import REGISTRY
+from alpha_backend.datasource.storage.io import DataFile
 
 dtype = REGISTRY.get("KData")
 file_ = DataFile(dtype)
@@ -753,7 +753,7 @@ df = file_.read(
 # 2. Incremental append (after each daily fetch)
 n = file_.append(new_rows)
 
-# 3. Upsert (repair historical data)
+# 3. Upsert (repair historical datas)
 n = file_.upsert(corrected_df, conflict="replace")
 
 # 4. Stats
@@ -787,7 +787,7 @@ class StateTracker:
         - Write: fcntl file lock + tempfile + os.replace.
     """
 
-    def __init__(self, state_path: Path = Path("data/_Manifest/Data_State.json")) -> None: ...
+    def __init__(self, state_path: Path = Path("datas/_Manifest/Data_State.json")) -> None: ...
 
     def read(self) -> dict[str, DataTypeState]:
         """Read all type states. Empty dict if file is missing."""
@@ -828,9 +828,9 @@ class StateTracker:
 **Usage**:
 
 ```python
-from newbee.datasource.registry import REGISTRY
-from newbee.datasource.storage.io import DataFile
-from newbee.datasource.storage.state import StateTracker
+from alpha_backend.datasource.registry import REGISTRY
+from alpha_backend.datasource.storage.io import DataFile
+from alpha_backend.datasource.storage.state import StateTracker
 
 dtype = REGISTRY.get("KData")
 file_ = DataFile(dtype)
@@ -919,14 +919,14 @@ DataSourceError
 | Multi-process `update` on `Data_State.json` | Same: `fcntl` lock + `tempfile + rename`. |
 | Concurrent `read` + `write` | Reads are lock-free. Since `rename` is atomic, readers see either the old or the new version, never a partial mix. |
 | `truncate` + `read` concurrency | `truncate` is not locked; the caller is responsible. Doc explicitly states "stop all reads before truncating". |
-| Cross-machine concurrency | **Not supported**. The data module is single-machine by design; cross-machine requires distributed storage (future work). |
+| Cross-machine concurrency | **Not supported**. The datas module is single-machine by design; cross-machine requires distributed storage (future work). |
 
 #### 10.7.7 Typical Workflows
 
 **Scenario A — backtest read**:
 
 ```python
-from newbee.datasource.service.kdata import KDataService
+from alpha_backend.datasource.service.kdata import KDataService
 
 service = KDataService()
 df = service.read_window(
@@ -940,7 +940,7 @@ df = service.read_window(
 **Scenario B — daily incremental update**:
 
 ```python
-from newbee.datasource.service.kdata import KDataService
+from alpha_backend.datasource.service.kdata import KDataService
 
 service = KDataService()
 result = service.daily_update(today="2026-06-23", source="sina")
@@ -950,17 +950,17 @@ print(f"success={result.success}, failed={len(result.failed)}, elapsed={result.e
 **Scenario C — first-time init (scorched-earth)**:
 
 ```python
-from newbee.datasource.service.kdata import KDataService
+from alpha_backend.datasource.service.kdata import KDataService
 
 service = KDataService()
 service.full_init(start="2020-01-01")  # full re-fetch + rebuild
 ```
 
-**Scenario D — PIT data upsert (post-revision)**:
+**Scenario D — PIT datas upsert (post-revision)**:
 
 ```python
-from newbee.datasource.registry import REGISTRY
-from newbee.datasource.storage.io import DataFile
+from alpha_backend.datasource.registry import REGISTRY
+from alpha_backend.datasource.storage.io import DataFile
 
 dtype = REGISTRY.get("PIT")
 file_ = DataFile(dtype)
@@ -978,7 +978,7 @@ print(f"upserted {n} rows into PIT")
         │
         ▼
   PostToolUse hook triggers
-   ├── python -m newbee.datasource.codegen
+   ├── python -m alpha_backend.datasource.codegen
    │     ├── generate Pydantic BaseModel
    │     └── generate dictionary Markdown
    └── pytest tests/test_dict_sync.py -q
@@ -992,37 +992,37 @@ print(f"upserted {n} rows into PIT")
 
 ### 10.9 Deprecation & Rollback
 
-- Legacy per-stock directories (`data/raw/`, `data/adj/`) are retained for one iteration cycle; after the new code stabilizes, a human operator deletes them manually.
-- The legacy `data/_manifest/fetch_state.json` is no longer written; new code writes only `Data_State.json`.
-- The legacy `data/universe/pool.parquet` is deleted by a human operator once the new `Universe.parquet` is fully generated.
-- Legacy subdirectories `data/pit/`, `data/features/`, `data/alpha/` follow the same rule.
-- The legacy Python package `newbee/data/` has been removed in M3 — all consumers (cli, alpha_store, engines, scripts) migrated to `newbee.datasource.*` directly. `newbee/datasource/storage/{bars_adapter,pool_adapter}.py` provide the legacy `Bars` / `StockPool` thin shims for engines.
+- Legacy per-stock directories (`datas/raw/`, `datas/adj/`) are retained for one iteration cycle; after the new code stabilizes, a human operator deletes them manually.
+- The legacy `datas/_manifest/fetch_state.json` is no longer written; new code writes only `Data_State.json`.
+- The legacy `datas/universe/pool.parquet` is deleted by a human operator once the new `Universe.parquet` is fully generated.
+- Legacy subdirectories `datas/pit/`, `datas/features/`, `datas/alpha/` follow the same rule.
+- The legacy Python package `alpha_backend/datas/` has been removed in M3 — all consumers (cli, alpha_store, engines, scripts) migrated to `alpha_backend.datasource.*` directly. `alpha_backend/datasource/storage/{bars_adapter,pool_adapter}.py` provide the legacy `Bars` / `StockPool` thin shims for engines.
 
 ## 11. AI Collaboration SOP (Claude Code)
 
-> The data-layer-specific SOP lives in `.claude/rules/data-sop.md`. This section is the platform-level companion, covering everything outside the data layer.
+> The datas-layer-specific SOP lives in `.claude/rules/datas-sop.md`. This section is the platform-level companion, covering everything outside the datas layer.
 
 ### 11.1 Read Before Modifying
 
 | Change type | Must read |
 |---|---|
-| Modify a field | `configs/data_dict/<Type>.yaml` + this doc §10.4–10.5 + `.claude/rules/data-sop.md` |
-| Add a new factor | `newbee/factors/base.py` (Factor Protocol) + `newbee/factors/registry.py` |
-| Add a new optimizer | `newbee/portfolio/optimizers/` (interface) + `newbee/portfolio/state.py` (conventions) |
+| Modify a field | `configs/data_dict/<Type>.yaml` + this doc §10.4–10.5 + `.claude/rules/datas-sop.md` |
+| Add a new factor | `alpha_backend/factors/base.py` (Factor Protocol) + `alpha_backend/factors/registry.py` |
+| Add a new optimizer | `alpha_backend/portfolio/optimizers/` (interface) + `alpha_backend/portfolio/state.py` (conventions) |
 | Add a new strategy | `configs/strategies/<name>.yaml` + `docs/01_first_factor.py` (reference) |
-| Modify the data layer | This doc §10 in full + `.claude/rules/data-sop.md` |
-| Modify the CLI | `newbee/cli.py` + `newbee/datasource/cli.py` (data subcommands live there) |
+| Modify the datas layer | This doc §10 in full + `.claude/rules/datas-sop.md` |
+| Modify the CLI | `alpha_backend/cli.py` + `alpha_backend/datasource/cli.py` (datas subcommands live there) |
 
 ### 11.2 Hard Constraints During Modification
 
 | Forbidden | Reason |
 |---|---|
-| Editing `newbee/datasource/schemas/*.py` to add a field | Drifts from YAML; `test_dict_sync.py` fails. |
+| Editing `alpha_backend/datasource/schemas/*.py` to add a field | Drifts from YAML; `test_dict_sync.py` fails. |
 | Calling `print(...)` in business code | Tests cannot capture; the logger proxy is bypassed. |
 | `import logging; logger = logging.getLogger(__name__)` | Causes duplicate output. |
-| Hard-coding `Path("data/raw")` / `Path("data/adj")` | Legacy paths, deprecated. |
-| Writing new files under `data/raw/` / `data/adj/` | Deprecated; use `data/<Type>.parquet` long format instead. |
-| `factor.compute()` using data with timestamp `> asof` | Look-ahead; `test_no_lookahead` will fail. |
+| Hard-coding `Path("datas/raw")` / `Path("datas/adj")` | Legacy paths, deprecated. |
+| Writing new files under `datas/raw/` / `datas/adj/` | Deprecated; use `datas/<Type>.parquet` long format instead. |
+| `factor.compute()` using datas with timestamp `> asof` | Look-ahead; `test_no_lookahead` will fail. |
 | Skipping `StateTracker.update()` to edit `Data_State.json` directly | Breaks atomicity + breaks the `schema_version` guard. |
 | Bare `except:` | Must specify a concrete exception type. |
 
@@ -1030,11 +1030,11 @@ print(f"upserted {n} rows into PIT")
 
 | Change type | Must run |
 |---|---|
-| Any data-layer field / registration / storage / state change | `pytest tests/test_dict_sync.py tests/test_storage_io.py tests/test_state_tracker.py -q` |
+| Any datas-layer field / registration / storage / state change | `pytest tests/test_dict_sync.py tests/test_storage_io.py tests/test_state_tracker.py -q` |
 | Any factor change | `pytest tests/test_no_lookahead.py -q` |
 | Any portfolio / optimizer change | `pytest tests/test_optimizer.py -q` |
 | Any logger change | `pytest tests/test_logger.py -q` |
-| Large change (>5 files or cross-layer interface) | `pytest tests/ -q` (full) + `python -m newbee.datasource.cli verify` |
+| Large change (>5 files or cross-layer interface) | `pytest tests/ -q` (full) + `python -m alpha_backend.datasource.cli verify` |
 | PostToolUse hook (auto) | Editing `configs/data_dict/*.yaml` or `schemas/*.py` auto-runs `codegen` + `dict_sync` |
 
 ### 11.4 Commit Message Style
@@ -1047,7 +1047,7 @@ print(f"upserted {n} rows into PIT")
 <body> (optional)
 ```
 
-`type` ∈ {`feat`, `fix`, `chore`, `refactor`, `test`, `docs`}. `scope` is typically the module name (`data` / `datasource` / `factor` / `portfolio` / `cli`).
+`type` ∈ {`feat`, `fix`, `chore`, `refactor`, `test`, `docs`}. `scope` is typically the module name (`datas` / `datasource` / `factor` / `portfolio` / `cli`).
 
 ## 12. Risks & Limitations
 
@@ -1055,14 +1055,14 @@ print(f"upserted {n} rows into PIT")
 |---|---|---|
 | Single-file append performance (full rewrite) | `pyarrow.ParquetWriter` writes row groups incrementally; can switch to dataset partitioning later. | Monitoring |
 | `schema_version` omitted during change | `DataFile.read()` enforces the check on startup; mismatch raises `SchemaVersionError`. | ✅ landed in M2 |
-| Legacy per-stock data remnants (`data/raw/`, `data/adj/`) | Legacy directories retained for one iteration; manually `rm -rf` after stabilization. | ⏳ cleanup window |
+| Legacy per-stock datas remnants (`datas/raw/`, `datas/adj/`) | Legacy directories retained for one iteration; manually `rm -rf` after stabilization. | ⏳ cleanup window |
 | Positions are weights, not share counts (unusable for live trading) | M2+ broker adapter will introduce share + cash model. | ⏳ M2+ |
 | Optimizer supports long-only | Shorting is on the M2+ roadmap. | ⏳ M2+ |
 | No T+1 / price-limit handling | Required for paper / live trading; M2+. | ⏳ M2+ |
 | Factor is classic momentum; no ML | On the M3+ roadmap. | ⏳ M3+ |
 | Cross-machine concurrency **not supported** | Data module is single-machine by design; cross-machine needs distributed storage (future work). | Documented |
-| `close_adj` requires source to provide both `close` and `adj_factor` | `Stock_Basic_Data.adj_factor` is derived offline as `KData.close_adj / KData.close` via `newbee data populate-stock-basic-adj`; missing `close_adj` (e.g. `600000.SH`) keeps `adj_factor = None`. | ✅ resolved by `populate-stock-basic-adj` |
-| `PITStore` not yet migrated to the new data layer | Will be addressed when financial data is redone in M3. | ⏳ M3+ |
+| `close_adj` requires source to provide both `close` and `adj_factor` | `Stock_Basic_Data.adj_factor` is derived offline as `KData.close_adj / KData.close` via `alpha_backend datas populate-stock-basic-adj`; missing `close_adj` (e.g. `600000.SH`) keeps `adj_factor = None`. | ✅ resolved by `populate-stock-basic-adj` |
+| `PITStore` not yet migrated to the new datas layer | Will be addressed when financial datas is redone in M3. | ⏳ M3+ |
 
 ## 13. Roadmap
 
@@ -1077,7 +1077,7 @@ print(f"upserted {n} rows into PIT")
 
 - ML factors (LGB / NN).
 - NLP factors (announcements / research reports).
-- Alternative data ingestion.
+- Alternative datas ingestion.
 - `PIT.parquet` schema + PIT adapter implementation.
 - `Features_Alpha` dictionary completion.
 
@@ -1097,4 +1097,4 @@ print(f"upserted {n} rows into PIT")
 ---
 
 **Maintainer**: Newbee Architecture Group
-**Change protocol**: small edits direct; large structural changes go through OpenSpec (`opsx:propose`). Edit reviewer must verify the data-layer section (§10) stays consistent with `configs/data_dict/*.yaml` and the generated `schemas/*.py`.
+**Change protocol**: small edits direct; large structural changes go through OpenSpec (`opsx:propose`). Edit reviewer must verify the datas-layer section (§10) stays consistent with `configs/data_dict/*.yaml` and the generated `schemas/*.py`.

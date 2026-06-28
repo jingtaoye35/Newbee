@@ -4,7 +4,7 @@
 
 - **schema_version**: `1.0`
 - **frequency**: `daily`
-- **storage**: `data/KData.parquet`
+- **storage**: `datas/KData.parquet`
 - **primary_key**: `trading_date, stock_code`
 
 ## Fields
@@ -23,5 +23,5 @@
 
 ## Notes
 
-- 此字典由 `python -m newbee.datasource.codegen` 自动生成, 不要手改.
+- 此字典由 `python -m alpha_backend.datasource.codegen` 自动生成, 不要手改.
 - 字段定义变更请改 `configs/data_dict/KData.yaml` 后跑 codegen + pytest.

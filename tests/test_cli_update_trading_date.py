@@ -1,9 +1,9 @@
-"""test_cli_update_trading_date.py — `data update --type Trading_Date` 分支测试.
+"""test_cli_update_trading_date.py — `datas update --type Trading_Date` 分支测试.
 
 覆盖:
 - cmd_data_update 在 --type Trading_Date 时路由到 Trading_DateService.daily_update,
   target = today + 1 天, 打印标准摘要, 退出码 0.
-- `data update --help` 在 --type help 文本里列出 Trading_Date.
+- `datas update --help` 在 --type help 文本里列出 Trading_Date.
 """
 from __future__ import annotations
 
@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from newbee.datasource import cli as cli_mod
-from newbee.datasource.service.trading_date import Trading_DateService
-from newbee.datasource.service.trading_date import UpdateSummary as RealUpdateSummary
+from alpha_backend.datasource import cli as cli_mod
+from alpha_backend.datasource.service.trading_date import Trading_DateService
+from alpha_backend.datasource.service.trading_date import UpdateSummary as RealUpdateSummary
 
 
 def _make_args(tmp_path: Path) -> Namespace:
@@ -56,7 +56,7 @@ def test_cmd_data_update_trading_date_dispatches(
             )
 
     monkeypatch.setattr(
-        "newbee.datasource.service.trading_date.Trading_DateService",
+        "alpha_backend.datasource.service.trading_date.Trading_DateService",
         FakeService,
     )
 
@@ -97,7 +97,7 @@ def test_cmd_data_update_trading_date_no_op(
             )
 
     monkeypatch.setattr(
-        "newbee.datasource.service.trading_date.Trading_DateService",
+        "alpha_backend.datasource.service.trading_date.Trading_DateService",
         FakeService,
     )
 
@@ -109,9 +109,9 @@ def test_cmd_data_update_trading_date_no_op(
 
 
 def test_update_help_lists_trading_date() -> None:
-    """`python -m newbee.datasource.cli update --help` 必须在 --type 段落里出现 Trading_Date."""
+    """`python -m alpha_backend.datasource.cli update --help` 必须在 --type 段落里出现 Trading_Date."""
     result = subprocess.run(
-        [sys.executable, "-m", "newbee.datasource.cli", "update", "--help"],
+        [sys.executable, "-m", "alpha_backend.datasource.cli", "update", "--help"],
         capture_output=True,
         text=True,
         check=True,

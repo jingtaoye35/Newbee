@@ -2,7 +2,7 @@ name: Stock_Basic_Data
 description: 股票基础数据 (累积复权因子 + 涨跌停价 + 申万行业, long format, float64 精度).
 schema_version: "1.0"
 frequency: daily
-storage: data/Stock_Basic_Data.parquet
+storage: datas/Stock_Basic_Data.parquet
 primary_key:
   - trading_date
   - stock_code

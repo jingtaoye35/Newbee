@@ -1,7 +1,7 @@
 # 20 日动量因子配置
 #
 # 由 factors/pipeline.py / engines/backtest_alpha.py 加载使用
-# 与 newbee.factors.classic.momentum.momentum_20 因子函数对应
+# 与 alpha_backend.factors.classic.momentum.momentum_20 因子函数对应
 factor:
   name: momentum_20
   version: "1.0"
@@ -14,7 +14,7 @@ compute:
   handle_invalid: nan         # 数据不足 / 价格异常 → NaN
 
 # 数据依赖
-data:
+datas:
   source: sina                # sina | em | tx
   adjust: qfq                 # qfq (前复权) | hfq | ''
   start: "2020-01-01"

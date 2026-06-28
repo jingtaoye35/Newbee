@@ -13,7 +13,7 @@ factor:
   field: adj_close  # 用前复权价
 
 # 数据
-data:
+datas:
   universe: csi1000
   source: sina
   adjust: qfq

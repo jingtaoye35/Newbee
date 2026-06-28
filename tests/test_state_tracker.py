@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from newbee.datasource.registry import REGISTRY
-from newbee.datasource.storage.errors import SchemaVersionError, StateCorruptedError
-from newbee.datasource.storage.io import CoverageStats, DataFile
-from newbee.datasource.storage.state import (
+from alpha_backend.datasource.registry import REGISTRY
+from alpha_backend.datasource.storage.errors import SchemaVersionError, StateCorruptedError
+from alpha_backend.datasource.storage.io import CoverageStats, DataFile
+from alpha_backend.datasource.storage.state import (
     DEFAULT_RESUME_START,
     StateTracker,
 )
@@ -17,7 +17,7 @@ from newbee.datasource.storage.state import (
 
 @pytest.fixture
 def state_path(tmp_path: Path) -> Path:
-    return tmp_path / "data" / "_Manifest" / "Data_State.json"
+    return tmp_path / "datas" / "_Manifest" / "Data_State.json"
 
 
 @pytest.fixture
@@ -166,7 +166,7 @@ def test_corrupted_state_raises(tracker: StateTracker, state_path: Path) -> None
 
 def test_state_tracker_via_data_file(tmp_path: Path) -> None:
     """完整闭环: append → stats → tracker.update → tracker.read."""
-    state_path = tmp_path / "data" / "_Manifest" / "Data_State.json"
+    state_path = tmp_path / "datas" / "_Manifest" / "Data_State.json"
     tracker = StateTracker(state_path)
     df_obj = DataFile(REGISTRY.get("KData"), root=tmp_path)
 

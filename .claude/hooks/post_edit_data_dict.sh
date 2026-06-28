@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # PostToolUse hook: 当 Edit/Write/MultiEdit 作用于 configs/data_dict/*.yaml 或
-# newbee/datasource/schemas/*.py 时, 自动跑 codegen + dict_sync.
+# alpha_backend/datasource/schemas/*.py 时, 自动跑 codegen + dict_sync.
 #
 # 用法: 在 .claude/settings.json 中注册 PostToolUse hook.
-# 仅当文件路径匹配 configs/data_dict/*.yaml 或 newbee/datasource/schemas/*.py 时触发.
+# 仅当文件路径匹配 configs/data_dict/*.yaml 或 alpha_backend/datasource/schemas/*.py 时触发.
 
 set -u
 
@@ -17,9 +17,9 @@ case "$TOOL_NAME" in
   *) exit 0 ;;
 esac
 
-# 仅对 configs/data_dict/*.yaml 或 newbee/datasource/schemas/*.py 触发
+# 仅对 configs/data_dict/*.yaml 或 alpha_backend/datasource/schemas/*.py 触发
 case "$FILE_PATH" in
-  */configs/data_dict/*.yaml|*/newbee/datasource/schemas/*.py) ;;
+  */configs/data_dict/*.yaml|*/alpha_backend/datasource/schemas/*.py) ;;
   *) exit 0 ;;
 esac
 
@@ -37,7 +37,7 @@ cd "$(dirname "$0")/../.." 2>/dev/null || cd /Users/yejingtao/JohnsonProject/New
 echo "[codegen-hook] triggered by $TOOL_NAME on $FILE_PATH"
 
 # 跑 codegen (失败也继续, 便于调试)
-if ! python -m newbee.datasource.codegen 2>&1; then
+if ! python -m alpha_backend.datasource.codegen 2>&1; then
   echo "[codegen-hook] WARN: codegen returned non-zero (may be expected if YAML is partial)"
 fi
 

@@ -2,7 +2,7 @@ name: Universe
 description: 自建股票池 (append-only, stock_index 单调递增).
 schema_version: "1.0"
 frequency: static
-storage: data/Universe.parquet
+storage: datas/Universe.parquet
 primary_key:
   - stock_index
 fields:

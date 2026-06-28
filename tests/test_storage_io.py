@@ -6,14 +6,14 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from newbee.datasource.registry import REGISTRY, DataType
-from newbee.datasource.schemas import TradingDate
-from newbee.datasource.storage.errors import (
+from alpha_backend.datasource.registry import REGISTRY, DataType
+from alpha_backend.datasource.schemas import TradingDate
+from alpha_backend.datasource.storage.errors import (
     PrimaryKeyConflictError,
     SchemaValidationError,
     SchemaVersionError,
 )
-from newbee.datasource.storage.io import DataFile
+from alpha_backend.datasource.storage.io import DataFile
 
 
 @pytest.fixture
@@ -250,11 +250,11 @@ def test_truncate(kdata_file: DataFile) -> None:
 
 def test_schema_version_mismatch_raises(kdata_file: DataFile, tmp_root: Path) -> None:
     """Data_State.json 写入旧版本 schema_version, 读时应拒绝."""
-    from newbee.datasource.storage.state import StateTracker
+    from alpha_backend.datasource.storage.state import StateTracker
 
     kdata_file.append(_sample_kdata_rows())  # 写一次, 触发 schema 存在
     # 写一个旧版本 state
-    tracker = StateTracker(tmp_root / "data" / "_Manifest" / "Data_State.json")
+    tracker = StateTracker(tmp_root / "datas" / "_Manifest" / "Data_State.json")
     fake_stats = kdata_file.stats()
     # 模拟历史版本
     fake_stats.schema_version = "0.9"
@@ -273,7 +273,7 @@ def _make_csv_dtype(tmp_root: Path) -> DataType:
         name="Trading_Date",
         schema_version="1.0",
         frequency="static",
-        storage_path=Path("data/Trading_Date.csv"),
+        storage_path=Path("datas/Trading_Date.csv"),
         primary_key=("trading_date",),
         pydantic_model=TradingDate,
         format="csv",
@@ -357,7 +357,7 @@ def test_storage_io_csv_format_default_is_parquet() -> None:
         name="KData",
         schema_version="1.0",
         frequency="daily",
-        storage_path=Path("data/KData.parquet"),
+        storage_path=Path("datas/KData.parquet"),
         primary_key=("trading_date", "stock_code"),
         pydantic_model=TradingDate,  # any BaseModel subclass; just need a type
     )
@@ -371,7 +371,7 @@ def test_storage_io_csv_format_invalid_raises() -> None:
             name="KData",
             schema_version="1.0",
             frequency="daily",
-            storage_path=Path("data/KData.parquet"),
+            storage_path=Path("datas/KData.parquet"),
             primary_key=("trading_date", "stock_code"),
             pydantic_model=TradingDate,
             format="feather",

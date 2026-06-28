@@ -1,10 +1,10 @@
 ---
-globs: ["newbee/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+globs: ["alpha_backend/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
 ---
 # Python 代码规范
 
 ## 核心原则
-- 遵循 PEP 8 规范，行宽限制为 100 字符。
+- 遵循 PEP 8 规范，行宽限制为 150 字符。
 - 强制使用类型提示（Type Hints），所有公开函数必须有入参和返回值注解。
 - 在文件顶部统一添加 `from __future__ import annotations`。
 
@@ -25,6 +25,6 @@ globs: ["newbee/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
 - 优先使用 `asyncio` 标准库，除非有明确的性能瓶颈再考虑多线程/多进程。
 
 ## 异常与日志
-- 禁止使用 `print` 进行调试或输出，统一使用 `logging` 模块或 `structlog`。
+- 禁止使用 `print` 进行调试或输出，统一使用内部 `logger` 模块。
 - 捕获异常时必须指定具体异常类型，禁止使用裸 `except:`。
 - 记录日志时，使用 f-string 或 `%s` 占位符，不要在日志函数外进行字符串拼接。

@@ -6,10 +6,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from newbee.datasource.registry import REGISTRY
-from newbee.datasource.service.trade_status import TradeStatusService
-from newbee.datasource.service.stock_basic_data import StockBasicDataService
-from newbee.datasource.storage.io import DataFile
+from alpha_backend.datasource.registry import REGISTRY
+from alpha_backend.datasource.service.trade_status import TradeStatusService
+from alpha_backend.datasource.service.stock_basic_data import StockBasicDataService
+from alpha_backend.datasource.storage.io import DataFile
 
 
 def _write_kdata(root: Path, rows: list[dict]) -> None:
@@ -17,7 +17,7 @@ def _write_kdata(root: Path, rows: list[dict]) -> None:
     for col in ("open", "high", "low", "close", "amount", "volume", "close_adj"):
         if col in df.columns:
             df[col] = df[col].astype("float32")
-    path = root / "data" / "KData.parquet"
+    path = root / "datas" / "KData.parquet"
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
 
@@ -28,7 +28,7 @@ def _write_universe(root: Path, codes: list[str]) -> None:
         columns=["stock_index", "stock_code", "ipo_date"],
     )
     df["stock_index"] = df["stock_index"].astype("int32")
-    path = root / "data" / "Universe.parquet"
+    path = root / "datas" / "Universe.parquet"
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
 
@@ -53,7 +53,7 @@ def test_trade_status_infers_suspended(tmp_path: Path) -> None:
     svc = TradeStatusService(root=str(tmp_path))
     svc.full_init(start="2024-01-01")
 
-    df = pd.read_parquet(tmp_path / "data" / "Trade_Status.parquet")
+    df = pd.read_parquet(tmp_path / "datas" / "Trade_Status.parquet")
     assert len(df) == 2
     suspended = df[df["is_suspended"]]["stock_code"].tolist()
     assert "000012.SZ" in suspended
@@ -77,11 +77,11 @@ def test_trade_status_handles_nan_ohlcv(tmp_path: Path) -> None:
     )
     for col in ("open", "high", "low", "close", "amount", "volume", "close_adj"):
         df[col] = df[col].astype("float32")
-    path = tmp_path / "data" / "KData.parquet"
+    path = tmp_path / "datas" / "KData.parquet"
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
     TradeStatusService(root=str(tmp_path)).full_init(start="2024-01-01")
-    df_ts = pd.read_parquet(tmp_path / "data" / "Trade_Status.parquet")
+    df_ts = pd.read_parquet(tmp_path / "datas" / "Trade_Status.parquet")
     assert bool(df_ts.iloc[0]["is_suspended"])
 
 
@@ -103,7 +103,7 @@ def test_stock_basic_data_infer_from_kdata(tmp_path: Path) -> None:
     result = svc.full_init(start="2024-01-01")
     assert result["rows"] == 1
 
-    df = pd.read_parquet(tmp_path / "data" / "Stock_Basic_Data.parquet")
+    df = pd.read_parquet(tmp_path / "datas" / "Stock_Basic_Data.parquet")
     assert abs(float(df.iloc[0]["adj_factor"]) - 2.0) < 1e-6
 
 
@@ -121,7 +121,7 @@ def test_stock_basic_data_skips_zero_close(tmp_path: Path) -> None:
     result = StockBasicDataService(root=str(tmp_path)).full_init(start="2024-01-01")
     assert result["rows"] == 0
     # 文件不存在 (因为没数据写入)
-    assert not (tmp_path / "data" / "Stock_Basic_Data.parquet").exists()
+    assert not (tmp_path / "datas" / "Stock_Basic_Data.parquet").exists()
 
 
 def test_stock_basic_data_requires_kdata(tmp_path: Path) -> None:

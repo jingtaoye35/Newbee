@@ -1,6 +1,6 @@
-"""test_legacy_kdata_migration.py — `newbee.datasource.migration.legacy_kdata` 单元测试.
+"""test_legacy_kdata_migration.py — `alpha_backend.datasource.migration.legacy_kdata` 单元测试.
 
-所有 fixture 用 `tmp_path` 写小规模合成 parquet, 不依赖真实 data/_Deprecated_*.parquet.
+所有 fixture 用 `tmp_path` 写小规模合成 parquet, 不依赖真实 datas/_Deprecated_*.parquet.
 """
 from __future__ import annotations
 
@@ -12,13 +12,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from newbee.datasource.migration.legacy_kdata import (
+from alpha_backend.datasource.migration.legacy_kdata import (
     _to_stock_code,
     build_kdata_from_legacy,
     build_stock_basic_data_from_legacy,
 )
-from newbee.datasource.registry import REGISTRY
-from newbee.datasource.storage.io import DataFile
+from alpha_backend.datasource.registry import REGISTRY
+from alpha_backend.datasource.storage.io import DataFile
 
 
 # ---------- helpers: 写一个 legacy per-stock parquet ----------

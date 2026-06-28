@@ -2,7 +2,7 @@ name: KData
 description: 日 K 线 (long format).
 schema_version: "1.0"
 frequency: daily
-storage: data/KData.parquet
+storage: datas/KData.parquet
 primary_key:
   - trading_date
   - stock_code

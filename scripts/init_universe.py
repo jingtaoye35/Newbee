@@ -5,7 +5,7 @@
 
 逻辑:
     1. 调 UniverseService.full_init (内部走 akshare 拉指数 + IPO)
-    2. 写 data/Universe.parquet + 更新 Data_State.json
+    2. 写 datas/Universe.parquet + 更新 Data_State.json
     3. 打印 universe_sha / 数量
 """
 from __future__ import annotations
@@ -14,13 +14,13 @@ import argparse
 import sys
 from pathlib import Path
 
-# 把项目根加进 sys.path, 让脚本能 import newbee
+# 把项目根加进 sys.path, 让脚本能 import alpha_backend
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.datasource.registry import REGISTRY  # noqa: E402
-from newbee.datasource.service.universe import UniverseService  # noqa: E402
-from newbee.datasource.storage.io import DataFile  # noqa: E402
+from alpha_backend.datasource.registry import REGISTRY  # noqa: E402
+from alpha_backend.datasource.service.universe import UniverseService  # noqa: E402
+from alpha_backend.datasource.storage.io import DataFile  # noqa: E402
 
 # 指数名 → UniverseService.index_name 取值 (与 fetch_index_constituents 一致)
 UNIVERSE_OPTIONS = ["csi1000", "csi500", "csi300", "csi100"]
@@ -51,7 +51,7 @@ def main() -> None:
         from pathlib import Path as _P
 
         dtype = REGISTRY.get("Universe")
-        path = _P("data") / dtype.storage_path
+        path = _P("datas") / dtype.storage_path
         if path.exists():
             print(f"[reset] 删除现有 {path}")
             path.unlink()

@@ -11,8 +11,8 @@
   8. 画图: NAV, 持仓变化, 换手率
 
 输出:
-  - data/alpha/{strategy_id}/{date}.npy
-  - data/portfolio/{strategy_id}/nav.parquet
+  - datas/alpha/{strategy_id}/{date}.npy
+  - datas/portfolio/{strategy_id}/nav.parquet
 """
 from __future__ import annotations
 
@@ -27,15 +27,15 @@ import matplotlib.pyplot as plt
 PROJECT_ROOT = Path("/Users/yejingtao/JohnsonProject/Newbee")
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.data.universe import StockPool
-from newbee.data.storage import load_bars_from_parquet
-from newbee.data.calendar import sessions_between
-from newbee.factors.classic.momentum import momentum_20
-from newbee.factors.pipeline import compute_factor_panel
-from newbee.alpha_store import AlphaStore
-from newbee.engines.backtest_alpha import forward_returns_from_prices
-from newbee.engines.backtest_portfolio import run_portfolio_backtest
-from newbee.portfolio import CostModel
+from alpha_backend.datas.universe import StockPool
+from alpha_backend.datas.storage import load_bars_from_parquet
+from alpha_backend.datas.calendar import sessions_between
+from alpha_backend.factors.classic.momentum import momentum_20
+from alpha_backend.factors.pipeline import compute_factor_panel
+from alpha_backend.alpha_store import AlphaStore
+from alpha_backend.engines.backtest_alpha import forward_returns_from_prices
+from alpha_backend.engines.backtest_portfolio import run_portfolio_backtest
+from alpha_backend.portfolio import CostModel
 
 
 # ---------- 1. 加载数据 ----------
@@ -43,7 +43,7 @@ print("=" * 60)
 print("[1] 加载股票池 + 行情")
 print("=" * 60)
 
-pool = StockPool.load(PROJECT_ROOT / "data" / "universe" / "pool.parquet")
+pool = StockPool.load(PROJECT_ROOT / "datas" / "universe" / "pool.parquet")
 print(f"Pool size: {pool.size}, active: {pool.active_count}")
 
 # 用最近 2 年 (避免冷启动)
@@ -51,7 +51,7 @@ end = date(2024, 12, 31)
 start = date(2023, 1, 1)
 bars = load_bars_from_parquet(
     pool=pool,
-    data_root=PROJECT_ROOT / "data" / "adj",
+    data_root=PROJECT_ROOT / "datas" / "adj",
     start=start,
     end=end,
     field="adj_close",  # 复权价
@@ -93,7 +93,7 @@ print("[4] 写 alpha store")
 print("=" * 60)
 
 strategy_id = "momentum_20_v1"
-alpha_store = AlphaStore(PROJECT_ROOT / "data" / "alpha" / strategy_id, pool)
+alpha_store = AlphaStore(PROJECT_ROOT / "datas" / "alpha" / strategy_id, pool)
 
 # 只写非全 NaN 的日期
 for t, d in enumerate(bars.dates):
@@ -209,7 +209,7 @@ print("\n" + "=" * 60)
 print("[8] 保存结果")
 print("=" * 60)
 
-result_dir = PROJECT_ROOT / "data" / "portfolio" / strategy_id
+result_dir = PROJECT_ROOT / "datas" / "portfolio" / strategy_id
 result_dir.mkdir(parents=True, exist_ok=True)
 for name, r in results.items():
     r.nav.to_frame(name="nav").to_parquet(result_dir / f"nav_{name}.parquet")

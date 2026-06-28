@@ -21,7 +21,7 @@ import pytest
 PROJECT_ROOT = Path("/Users/yejingtao/JohnsonProject/Newbee")
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.factors.classic.momentum import momentum_20, momentum_60, rev_5
+from alpha_backend.factors.classic.momentum import momentum_20, momentum_60, rev_5
 
 
 # ---------- helpers ----------
@@ -104,7 +104,7 @@ def test_momentum_20_robust_to_future_corruption(corrupt_t_offset):
 
 def test_pipeline_no_lookahead():
     """compute_factor_panel: 整段时间序列, 中间某段破损不影响之前的值."""
-    from newbee.factors.pipeline import compute_factor_at
+    from alpha_backend.factors.pipeline import compute_factor_at
 
     prices = make_synthetic_prices(n_stocks=5, n_days=80, seed=11)
     dates = [date(2020, 1, 1) + timedelta(days=int(d)) for d in range(80)]

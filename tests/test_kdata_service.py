@@ -8,7 +8,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from newbee.datasource.service.kdata import KDataService
+from alpha_backend.datasource.service.kdata import KDataService
 
 
 def _write_universe(root: Path, codes: list[str], ipo_date: str = "1990-01-01") -> None:
@@ -17,7 +17,7 @@ def _write_universe(root: Path, codes: list[str], ipo_date: str = "1990-01-01") 
         columns=["stock_index", "stock_code", "ipo_date"],
     )
     df["stock_index"] = df["stock_index"].astype("int32")
-    path = root / "data" / "Universe.parquet"
+    path = root / "datas" / "Universe.parquet"
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
 
@@ -51,7 +51,7 @@ def test_full_init_writes_kdata_parquet(tmp_path: Path) -> None:
     def fake_fetch(stock_code: str, **kwargs) -> pd.DataFrame:
         return _fake_kdata_df(stock_code, ["2024-01-02", "2024-01-03"])
 
-    with patch("newbee.datasource.service.kdata.fetch_stock_hist", side_effect=fake_fetch):
+    with patch("alpha_backend.datasource.service.kdata.fetch_stock_hist", side_effect=fake_fetch):
         svc = KDataService(root=str(tmp_path))
         summary = svc.full_init(start="2024-01-01")
 
@@ -60,8 +60,8 @@ def test_full_init_writes_kdata_parquet(tmp_path: Path) -> None:
     assert summary.row_count == 4  # 2 stocks × 2 dates
 
     # 验证 parquet 存在 + 内容
-    assert (tmp_path / "data" / "KData.parquet").exists()
-    df = pd.read_parquet(tmp_path / "data" / "KData.parquet")
+    assert (tmp_path / "datas" / "KData.parquet").exists()
+    df = pd.read_parquet(tmp_path / "datas" / "KData.parquet")
     assert len(df) == 4
     assert set(df["stock_code"]) == {"600000.SH", "000012.SZ"}
 
@@ -71,20 +71,20 @@ def test_daily_update_extends(tmp_path: Path) -> None:
     # 先全量初始化 2024-01-02
     _write_universe(tmp_path, ["600000.SH"])
     with patch(
-        "newbee.datasource.service.kdata.fetch_stock_hist",
+        "alpha_backend.datasource.service.kdata.fetch_stock_hist",
         side_effect=lambda code, **kw: _fake_kdata_df(code, ["2024-01-02"]),
     ):
         KDataService(root=str(tmp_path)).full_init(start="2024-01-01")
 
     # 现在跑 daily_update, latest=2024-01-05, 应该拉 01-03 ~ 01-05
     with patch(
-        "newbee.datasource.service.kdata.fetch_stock_hist",
+        "alpha_backend.datasource.service.kdata.fetch_stock_hist",
         side_effect=lambda code, **kw: _fake_kdata_df(code, ["2024-01-03", "2024-01-05"]),
     ):
         summary = KDataService(root=str(tmp_path)).daily_update(today=date(2024, 1, 5))
 
     assert summary.success == 1
-    df = pd.read_parquet(tmp_path / "data" / "KData.parquet")
+    df = pd.read_parquet(tmp_path / "datas" / "KData.parquet")
     assert len(df) == 3
     assert set(df["trading_date"]) == {"2024-01-02", "2024-01-03", "2024-01-05"}
 
@@ -93,7 +93,7 @@ def test_daily_update_up_to_date(tmp_path: Path) -> None:
     """last_date == latest → up-to-date, success=0."""
     _write_universe(tmp_path, ["600000.SH"])
     with patch(
-        "newbee.datasource.service.kdata.fetch_stock_hist",
+        "alpha_backend.datasource.service.kdata.fetch_stock_hist",
         side_effect=lambda code, **kw: _fake_kdata_df(code, ["2024-01-02", "2024-01-03"]),
     ):
         KDataService(root=str(tmp_path)).full_init(start="2024-01-01")
@@ -107,7 +107,7 @@ def test_daily_update_up_to_date(tmp_path: Path) -> None:
 def test_read_window(tmp_path: Path) -> None:
     _write_universe(tmp_path, ["600000.SH"])
     with patch(
-        "newbee.datasource.service.kdata.fetch_stock_hist",
+        "alpha_backend.datasource.service.kdata.fetch_stock_hist",
         side_effect=lambda code, **kw: _fake_kdata_df(
             code, ["2024-01-02", "2024-01-03", "2024-01-04"]
         ),
@@ -123,15 +123,15 @@ def test_schema_version_guard(tmp_path: Path) -> None:
     """Data_State.json schema_version 不匹配 → read_window 拒绝."""
     _write_universe(tmp_path, ["600000.SH"])
     with patch(
-        "newbee.datasource.service.kdata.fetch_stock_hist",
+        "alpha_backend.datasource.service.kdata.fetch_stock_hist",
         side_effect=lambda code, **kw: _fake_kdata_df(code, ["2024-01-02"]),
     ):
         KDataService(root=str(tmp_path)).full_init(start="2024-01-01")
 
     # 手动改 state schema_version 为旧版
-    from newbee.datasource.storage.state import StateTracker
+    from alpha_backend.datasource.storage.state import StateTracker
 
-    state_path = tmp_path / "data" / "_Manifest" / "Data_State.json"
+    state_path = tmp_path / "datas" / "_Manifest" / "Data_State.json"
     tracker = StateTracker(state_path)
     full = tracker.read_full()
     full["types"]["KData"]["schema_version"] = "0.9"

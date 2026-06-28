@@ -1,4 +1,4 @@
-"""test_populate_adj_factor.py — `newbee.datasource.migration.populate_adj_factor` 单元测试."""
+"""test_populate_adj_factor.py — `alpha_backend.datasource.migration.populate_adj_factor` 单元测试."""
 from __future__ import annotations
 
 from dataclasses import replace as dc_replace
@@ -9,12 +9,12 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from newbee.datasource.migration.populate_adj_factor import (
+from alpha_backend.datasource.migration.populate_adj_factor import (
     apply_adj_factor_to_stock_basic,
     compute_adj_factor_from_kdata,
 )
-from newbee.datasource.registry import REGISTRY
-from newbee.datasource.storage.io import DataFile
+from alpha_backend.datasource.registry import REGISTRY
+from alpha_backend.datasource.storage.io import DataFile
 
 
 # ---------- helpers: 写一个合成 KData / Stock_Basic_Data parquet ----------

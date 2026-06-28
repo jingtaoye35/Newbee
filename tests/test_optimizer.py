@@ -22,7 +22,7 @@ import pytest
 PROJECT_ROOT = Path("/Users/yejingtao/JohnsonProject/Newbee")
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.portfolio import (
+from alpha_backend.portfolio import (
     mean_variance,
     equal_weight,
     inverse_vol,
@@ -35,7 +35,7 @@ from newbee.portfolio import (
     PortfolioState,
     CostModel,
 )
-from newbee.engines.backtest_portfolio import run_portfolio_backtest
+from alpha_backend.engines.backtest_portfolio import run_portfolio_backtest
 
 
 # ============ 单元测试 ============

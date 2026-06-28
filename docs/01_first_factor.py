@@ -26,12 +26,12 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.data.universe import StockPool  # noqa: E402
-from newbee.data.storage import load_bars_from_parquet  # noqa: E402
-from newbee.factors.classic import momentum  # noqa: F401, E402  (触发注册)
-from newbee.factors import get as get_factor  # noqa: E402
-from newbee.alpha_store import AlphaStore  # noqa: E402
-from newbee.engines.backtest_alpha import (  # noqa: E402
+from alpha_backend.datas.universe import StockPool  # noqa: E402
+from alpha_backend.datas.storage import load_bars_from_parquet  # noqa: E402
+from alpha_backend.factors.classic import momentum  # noqa: F401, E402  (触发注册)
+from alpha_backend.factors import get as get_factor  # noqa: E402
+from alpha_backend.alpha_store import AlphaStore  # noqa: E402
+from alpha_backend.engines.backtest_alpha import (  # noqa: E402
     forward_returns_from_prices,
     run_alpha_backtest,
 )
@@ -51,7 +51,7 @@ def main(
 
     print(f"[2] 加载 K 线 {start} ~ {end} ...")
     bars = load_bars_from_parquet(
-        stock_ids, start=start, end=end, kind="adj", root=PROJECT_ROOT / "data"
+        stock_ids, start=start, end=end, kind="adj", root=PROJECT_ROOT / "datas"
     )
     print(f"    bars.T = {bars.T}, bars.N = {bars.N}")
     if bars.T == 0:
@@ -132,14 +132,14 @@ def main(
     # 8. 写 alpha_store (供 run_alpha_backtest.py 消费)
     strategy_id = f"{factor_name}_{factor_version}"
     alpha_store = AlphaStore(
-        PROJECT_ROOT / "data" / "alpha" / strategy_id, pool,
+        PROJECT_ROOT / "datas" / "alpha" / strategy_id, pool,
     )
     n_written = 0
     for t, d in enumerate(bars.dates):
         if not np.isnan(scores[t]).all():
             alpha_store.write(d, scores[t], strategy_id=strategy_id)
             n_written += 1
-    print(f"\n[6] alpha_store 写入: {n_written} dates → data/alpha/{strategy_id}/")
+    print(f"\n[6] alpha_store 写入: {n_written} dates → datas/alpha/{strategy_id}/")
 
 
 if __name__ == "__main__":

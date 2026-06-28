@@ -65,7 +65,7 @@ Depending on what the user brings, you might:
 │      └────────┘         └────────┘      │
 │                                         │
 │   System diagrams, state machines,      │
-│   data flows, architecture sketches,    │
+│   datas flows, architecture sketches,    │
 │   dependency graphs, comparison tables  │
 │                                         │
 └─────────────────────────────────────────┘

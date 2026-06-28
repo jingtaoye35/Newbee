@@ -4,7 +4,7 @@
 
 - **schema_version**: `1.0`
 - **frequency**: `static`
-- **storage**: `data/Universe.parquet`
+- **storage**: `datas/Universe.parquet`
 - **primary_key**: `stock_index`
 
 ## Fields
@@ -17,5 +17,5 @@
 
 ## Notes
 
-- 此字典由 `python -m newbee.datasource.codegen` 自动生成, 不要手改.
+- 此字典由 `python -m alpha_backend.datasource.codegen` 自动生成, 不要手改.
 - 字段定义变更请改 `configs/data_dict/Universe.yaml` 后跑 codegen + pytest.

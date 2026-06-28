@@ -1,4 +1,4 @@
-"""`newbee.utils.logger` 模块级 proxy 测试.
+"""`alpha_backend.utils.logger` 模块级 proxy 测试.
 
 覆盖 spec/custom-logger 的全部 Scenario:
   - Requirement 1: 调用方模块名归属 / 跨模块复用 / 透传方法
@@ -61,7 +61,7 @@ def _isolate_logger(caplog):
         这里在 setUp 阶段把 caplog.handler 也直接挂到被测 logger 上, 让 caplog
         能 capture; teardown 时移除, 恢复 _configure 之前的状态.
     """
-    names = (_CALLER_NAME, "newbee.utils.logger")
+    names = (_CALLER_NAME, "alpha_backend.utils.logger")
     for n in names:
         _reset_logger(n)
     # 给被测 logger 直接挂 caplog.handler, 绕过 propagate=False
@@ -78,7 +78,7 @@ def _isolate_logger(caplog):
 
 def test_caller_module_name_attribution(caplog):
     """本测试模块 (tests.test_logger) 调 logger.info, logRecord.name 应是 tests.test_logger."""
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     with caplog.at_level(logging.INFO, logger=_CALLER_NAME):
         logger.info("hello-caller-attr")
@@ -94,7 +94,7 @@ def test_cross_module_reuse_same_proxy(caplog):
     技巧: 用 `types.FunctionType` 动态造两个函数, 它们的 `__globals__` 互相独立,
     各自 `__name__` 不同, 分别调 `logger.info` 后看 logRecord.name.
     """
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     code = compile("logger.info('x')", "<fake>", "exec")
     fn_a = types.FunctionType(code, {"__name__": "fake_mod_a", "logger": logger})
@@ -119,7 +119,7 @@ def test_cross_module_reuse_same_proxy(caplog):
 
 def test_proxy_passes_through_all_logger_methods():
     """proxy 透传所有 logging.Logger 公共方法."""
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     for method in (
         "info",
@@ -141,7 +141,7 @@ def test_proxy_passes_through_all_logger_methods():
 
 def test_bind_raises_not_implemented():
     """`logger.bind` 显式 NotImplementedError (留给后续 change)."""
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     with pytest.raises(NotImplementedError, match="bind 留给后续 change"):
         _ = logger.bind  # noqa: B018
@@ -152,7 +152,7 @@ def test_bind_raises_not_implemented():
 
 def test_first_access_attaches_handler():
     """proxy 第一次访问某 name (即本文件 _CALLER_NAME), 触发 _configure."""
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     # 触发
     _ = logger.info
@@ -165,7 +165,7 @@ def test_first_access_attaches_handler():
 
 def test_repeated_access_does_not_duplicate_handler():
     """同一 logger 多次触发, StreamHandler 数量不变."""
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     for _ in range(5):
         _ = logger.info
@@ -179,7 +179,7 @@ def test_repeated_access_does_not_duplicate_handler():
 
 def test_default_format(caplog):
     """默认格式: logRecord.name = 调用方模块名, message 原样保留."""
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     with caplog.at_level(logging.WARNING, logger=_CALLER_NAME):
         logger.warning("hi-default")
@@ -198,11 +198,11 @@ def test_log_format_override(monkeypatch):
     _reset_logger(_CALLER_NAME)
 
     # 卸载重载以让 _FORMAT 重新读
-    for mod_name in ("newbee.utils.logger", "newbee.utils"):
+    for mod_name in ("alpha_backend.utils.logger", "alpha_backend.utils"):
         if mod_name in sys.modules:
             del sys.modules[mod_name]
     try:
-        from newbee.utils import logger as fresh_logger  # noqa: F401
+        from alpha_backend.utils import logger as fresh_logger  # noqa: F401
         # 触发首次配置
         _ = fresh_logger.info
         real = logging.getLogger(_CALLER_NAME)
@@ -214,11 +214,11 @@ def test_log_format_override(monkeypatch):
     finally:
         # 清掉污染再 reload 恢复默认
         _reset_logger(_CALLER_NAME)
-        for mod_name in ("newbee.utils.logger", "newbee.utils"):
+        for mod_name in ("alpha_backend.utils.logger", "alpha_backend.utils"):
             if mod_name in sys.modules:
                 del sys.modules[mod_name]
-        importlib.import_module("newbee.utils.logger")
-        importlib.import_module("newbee.utils")
+        importlib.import_module("alpha_backend.utils.logger")
+        importlib.import_module("alpha_backend.utils")
 
 
 # ---------- Requirement 4: 不接管 root ----------
@@ -226,7 +226,7 @@ def test_log_format_override(monkeypatch):
 
 def test_root_logger_not_modified():
     """调用 proxy 前后, logging.root 的 level/handlers 不变."""
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     root = logging.root
     level_before = root.level
@@ -249,7 +249,7 @@ def test_legacy_logging_getlogger_path_unchanged():
     real.setLevel(logging.INFO)
     n_before = len(real.handlers)
 
-    from newbee.utils import logger
+    from alpha_backend.utils import logger
 
     _ = logger.info
     real_after = logging.getLogger("legacy_path_test_xyz")
@@ -263,22 +263,22 @@ def test_legacy_logging_getlogger_path_unchanged():
 
 
 def test_module_all_export():
-    """`newbee.utils.logger` 模块的 `__all__` 仅含 `logger`.
+    """`alpha_backend.utils.logger` 模块的 `__all__` 仅含 `logger`.
 
     Note:
-        `import newbee.utils.logger` 在 `__init__.py` 末尾会被 proxy binding
+        `import alpha_backend.utils.logger` 在 `__init__.py` 末尾会被 proxy binding
         覆盖,返回 `_LoggerProxy` 而非子 module;访问子 module 须经 `sys.modules`.
     """
     import sys
 
-    mod = sys.modules["newbee.utils.logger"]
+    mod = sys.modules["alpha_backend.utils.logger"]
     ns = {k: getattr(mod, k) for k in mod.__all__}
     assert set(ns.keys()) == {"logger"}
 
 
 def test_top_level_logger_alias():
-    """from newbee.utils import logger 与 from newbee.utils.logger import logger 是同一对象."""
-    from newbee.utils import logger as top_logger
-    from newbee.utils.logger import logger as direct_logger
+    """from alpha_backend.utils import logger 与 from alpha_backend.utils.logger import logger 是同一对象."""
+    from alpha_backend.utils import logger as top_logger
+    from alpha_backend.utils.logger import logger as direct_logger
 
     assert top_logger is direct_logger

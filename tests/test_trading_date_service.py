@@ -8,11 +8,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from newbee.datasource.service.trading_date import Trading_DateService
+from alpha_backend.datasource.service.trading_date import Trading_DateService
 
 
 def _state_path(root: Path) -> Path:
-    return root / "data" / "_Manifest" / "Data_State.json"
+    return root / "datas" / "_Manifest" / "Data_State.json"
 
 
 def _read_state(root: Path) -> dict:
@@ -30,7 +30,7 @@ def test_full_init_writes_csv(tmp_path: Path) -> None:
     svc = Trading_DateService(root=str(tmp_path))
     summary = svc.full_init(start="2024-01-01")
 
-    csv_path = tmp_path / "data" / "Trading_Date.csv"
+    csv_path = tmp_path / "datas" / "Trading_Date.csv"
     assert csv_path.exists()
     df = pd.read_csv(csv_path)
     assert list(df.columns) == ["trading_date"]
@@ -50,9 +50,9 @@ def test_full_init_writes_csv(tmp_path: Path) -> None:
 def test_full_init_idempotent(tmp_path: Path) -> None:
     svc = Trading_DateService(root=str(tmp_path))
     s1 = svc.full_init(start="2024-01-01")
-    df1 = pd.read_csv(tmp_path / "data" / "Trading_Date.csv")
+    df1 = pd.read_csv(tmp_path / "datas" / "Trading_Date.csv")
     s2 = svc.full_init(start="2024-01-01")
-    df2 = pd.read_csv(tmp_path / "data" / "Trading_Date.csv")
+    df2 = pd.read_csv(tmp_path / "datas" / "Trading_Date.csv")
     # 两次结果一致
     assert df1["trading_date"].tolist() == df2["trading_date"].tolist()
     # 第二次的 rows_added 应是 0 (已有数据完全覆盖)
@@ -80,7 +80,7 @@ def test_full_init_state_tracker(tmp_path: Path) -> None:
 def test_daily_update_no_existing_falls_back_to_full_init(tmp_path: Path) -> None:
     svc = Trading_DateService(root=str(tmp_path))
     summary = svc.daily_update()
-    csv_path = tmp_path / "data" / "Trading_Date.csv"
+    csv_path = tmp_path / "datas" / "Trading_Date.csv"
     assert csv_path.exists()
     assert summary.row_count > 0
 
@@ -99,13 +99,13 @@ def test_daily_update_appends_only_new_sessions(tmp_path: Path) -> None:
     svc = Trading_DateService(root=str(tmp_path))
     # 先建到 2024-06-30
     svc.full_init(start="2024-01-01", today=date(2024, 6, 30))
-    df_before = pd.read_csv(tmp_path / "data" / "Trading_Date.csv")
+    df_before = pd.read_csv(tmp_path / "datas" / "Trading_Date.csv")
     n_before = len(df_before)
     last_before = df_before["trading_date"].max()
 
     # 增量到 2024-07-10
     s = svc.daily_update(today=date(2024, 7, 10))
-    df_after = pd.read_csv(tmp_path / "data" / "Trading_Date.csv")
+    df_after = pd.read_csv(tmp_path / "datas" / "Trading_Date.csv")
     n_after = len(df_after)
 
     # 只追加了 6/30 之后的 sessions

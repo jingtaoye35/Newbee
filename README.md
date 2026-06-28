@@ -27,15 +27,15 @@ pip install numpy pandas pyarrow scipy exchange_calendars akshare pyyaml matplot
 
 ```bash
 python scripts/init_universe.py
-# 拉中证 1000 成分股 (csi1000) 入库到 data/universe/pool.parquet
+# 拉中证 1000 成分股 (csi1000) 入库到 datas/universe/pool.parquet
 ```
 
 ### 3. 拉取行情 (一次性, ~30-60 分钟)
 
 ```bash
 python scripts/fetch_data.py --universe csi1000 --start 2020-01-01 --end 2024-12-31
-# 数据落地: data/adj/{stock_id}.parquet (前复权)
-#        + data/raw/{stock_id}.parquet (不复权)
+# 数据落地: datas/adj/{stock_id}.parquet (前复权)
+#        + datas/raw/{stock_id}.parquet (不复权)
 ```
 
 ### 4. 跑第一个因子 + Alpha 回测
@@ -52,7 +52,7 @@ python scripts/run_alpha_backtest.py --config configs/factors/momentum_20.yaml
 
 ```bash
 python scripts/run_portfolio_backtest.py --config configs/strategies/momentum_baseline.yaml
-# 输出: data/portfolio/results/momentum_baseline_1.0_nav.parquet
+# 输出: datas/portfolio/results/momentum_baseline_1.0_nav.parquet
 ```
 
 ### 6. 跑测试
@@ -68,25 +68,25 @@ pytest tests/ -v
 
 ```bash
 # 查看每类数据的覆盖范围
-newbee data status
+alpha_backend datas status
 
 # 计划预览 (不下载, 不写 fetch_state)
-newbee data update --dry-run
+alpha_backend datas update --dry-run
 
 # 实际增量拉取 (从 last_date+1 到最新已收盘交易日)
-newbee data update
+alpha_backend datas update
 
 # 只更新特定 category
-newbee data update --categories adj
+alpha_backend datas update --categories adj
 ```
 
-fetch_state 持久化在 `data/_manifest/fetch_state.json`, 记录每种数据类型的 `first_date` / `last_date` / `row_count` / `file_count`。下次运行自动从 `last_date+1` 继续。
+fetch_state 持久化在 `datas/_manifest/fetch_state.json`, 记录每种数据类型的 `first_date` / `last_date` / `row_count` / `file_count`。下次运行自动从 `last_date+1` 继续。
 
 ## 架构
 
 ```
-newbee/
-├── data/                  # 数据层
+alpha_backend/
+├── datas/                  # 数据层
 │   ├── universe.py        # StockPool (append-only, sha256 校验)
 │   ├── storage.py         # 双格式 (parquet + npy 矩阵)
 │   ├── calendar.py        # 交易日历 (exchange_calendars 包装)
@@ -143,7 +143,7 @@ tests/
 
 ### 3. Alpha Store
 - 统一 alpha 读写, 回测 / 实盘同源
-- npy at `data/alpha/{strategy_id}/{date}.npy`
+- npy at `datas/alpha/{strategy_id}/{date}.npy`
 - `universe_sha` 校验防 universe 漂移
 
 ### 4. 两阶段回测
@@ -156,7 +156,7 @@ tests/
 - 一次失败 = look-ahead bug, 不能放过
 
 ### 6. 日志约定
-- 使用统一入口: `from newbee.utils import logger`, 然后直接 `logger.info(...)` / `logger.warning(...)`
+- 使用统一入口: `from alpha_backend.utils import logger`, 然后直接 `logger.info(...)` / `logger.warning(...)`
 - proxy 自动从调用栈取 `__name__` 作为 logger 名, 无需 `logger = get_logger(__name__)` 赋值行
 - 内部走 `logging` 标准库, proxy 给每个被首次访问的 logger 挂 `StreamHandler` + 统一 formatter, 并设 `propagate=False` 避免与 `logging.basicConfig` 重复输出
 - 默认格式: `%(asctime)s | %(levelname)-7s | %(name)s | %(message)s`; 可用 `LOG_FORMAT` 环境变量覆盖
@@ -174,7 +174,7 @@ factor:
   window: 20
   field: adj_close
 
-data:
+datas:
   start: "2020-01-01"
   end: "2024-12-31"
 

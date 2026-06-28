@@ -2,7 +2,7 @@ name: Trade_Status
 description: 交易状态 (停牌/ST/活跃, long format).
 schema_version: "1.0"
 frequency: daily
-storage: data/Trade_Status.parquet
+storage: datas/Trade_Status.parquet
 primary_key:
   - trading_date
   - stock_code

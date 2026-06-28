@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from newbee.datasource.service.universe import UniverseService
+from alpha_backend.datasource.service.universe import UniverseService
 
 
 def _write_universe(root: Path, rows: list[tuple[int, str, str]]) -> None:
@@ -20,7 +20,7 @@ def _write_universe(root: Path, rows: list[tuple[int, str, str]]) -> None:
     df["stock_index"] = df["stock_index"].astype("int32")
     df["stock_code"] = df["stock_code"].astype(str)
     df["ipo_date"] = df["ipo_date"].astype(str)
-    path = root / "data" / "Universe.parquet"
+    path = root / "datas" / "Universe.parquet"
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(path, index=False)
 
@@ -98,11 +98,11 @@ def test_full_init_writes_file(tmp_path: Path) -> None:
         return None
 
     with patch(
-        "newbee.datasource.service.universe.fetch_index_constituents",
+        "alpha_backend.datasource.service.universe.fetch_index_constituents",
         return_value=fake_codes,
     ):
         with patch(
-            "newbee.datasource.service.universe.fetch_ipo_date",
+            "alpha_backend.datasource.service.universe.fetch_ipo_date",
             side_effect=fake_fetch_ipo,
         ):
             svc = UniverseService(root=str(tmp_path))
@@ -113,8 +113,8 @@ def test_full_init_writes_file(tmp_path: Path) -> None:
     assert result["with_ipo"] == 2
 
     # 验证 parquet 存在
-    assert (tmp_path / "data" / "Universe.parquet").exists()
-    df = pd.read_parquet(tmp_path / "data" / "Universe.parquet")
+    assert (tmp_path / "datas" / "Universe.parquet").exists()
+    df = pd.read_parquet(tmp_path / "datas" / "Universe.parquet")
     assert len(df) == 1000
     assert (df["stock_index"].diff().dropna() == 1).all()  # 连续 idx
 
@@ -123,18 +123,18 @@ def test_full_init_idempotent(tmp_path: Path) -> None:
     """二次 full_init (同 index) 不重复添加."""
     fake_codes = ["600000.SH", "000012.SZ"]
     with patch(
-        "newbee.datasource.service.universe.fetch_index_constituents",
+        "alpha_backend.datasource.service.universe.fetch_index_constituents",
         return_value=fake_codes,
     ):
         with patch(
-            "newbee.datasource.service.universe.fetch_ipo_date",
+            "alpha_backend.datasource.service.universe.fetch_ipo_date",
             return_value="2010-01-01",
         ):
             svc = UniverseService(root=str(tmp_path))
             svc.full_init()
             result2 = svc.full_init()
     assert result2["added"] == 0
-    df = pd.read_parquet(tmp_path / "data" / "Universe.parquet")
+    df = pd.read_parquet(tmp_path / "datas" / "Universe.parquet")
     assert len(df) == 2
 
 

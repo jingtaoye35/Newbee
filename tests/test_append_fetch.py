@@ -1,6 +1,6 @@
 """fetch_stock_hist 测试 — mock akshare 不实际拉网络.
 
-覆盖 spec/data-ingestion 的 ADDED Requirements:
+覆盖 spec/datas-ingestion 的 ADDED Requirements:
 - 9 字符 stock_code 输入输出
 - long-format 列名 (trading_date / close_adj / 等)
 - 后复权: close_adj 列存在
@@ -15,7 +15,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from newbee.datasource.sources import akshare as akshare_mod
+from alpha_backend.datasource.sources import akshare as akshare_mod
 
 
 def _make_raw_sina_df(stock_code_9: str, dates: list[str]) -> pd.DataFrame:

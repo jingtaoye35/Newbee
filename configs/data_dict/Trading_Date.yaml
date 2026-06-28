@@ -1,8 +1,8 @@
 name: Trading_Date
-description: A 股交易日历 (single-column reference data, CSV-backed).
+description: A 股交易日历 (single-column reference datas, CSV-backed).
 schema_version: "1.0"
 frequency: static
-storage: data/Trading_Date.csv
+storage: datas/Trading_Date.csv
 primary_key:
   - trading_date
 fields:

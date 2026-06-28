@@ -1,4 +1,4 @@
-"""`newbee.datasource.storage.pool_adapter.StockPool` 单元测试."""
+"""`alpha_backend.datasource.storage.pool_adapter.StockPool` 单元测试."""
 from __future__ import annotations
 
 import sys
@@ -12,7 +12,7 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from newbee.datasource.storage.pool_adapter import StockPool  # noqa: E402
+from alpha_backend.datasource.storage.pool_adapter import StockPool  # noqa: E402
 
 
 @pytest.fixture
@@ -109,7 +109,7 @@ def test_active_mask_default_uses_today(tmp_universe: Path, monkeypatch):
         def today(cls):
             return _date(2019, 6, 1)
 
-    monkeypatch.setattr("newbee.datasource.storage.pool_adapter.date", FakeDate)
+    monkeypatch.setattr("alpha_backend.datasource.storage.pool_adapter.date", FakeDate)
     mask = pool.active_mask()  # no asof
     assert mask.tolist() == [True, True, False]
 
