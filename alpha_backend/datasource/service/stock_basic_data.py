@@ -14,7 +14,7 @@ import pandas as pd
 from alpha_backend.datasource.registry import REGISTRY
 from alpha_backend.datasource.service.universe import UniverseService
 from alpha_backend.datasource.storage.io import DataFile
-from alpha_backend.datasource.storage.state import StateTracker
+from alpha_backend.datasource.storage.state import StateTracker, DEFAULT_RESUME_START
 from alpha_backend.utils import logger
 
 
@@ -62,7 +62,7 @@ class StockBasicDataService:
         df["turnover"] = None
         return df[cols]
 
-    def full_init(self, *, start: str = "2020-01-01") -> dict[str, int]:
+    def full_init(self, *, start: str = DEFAULT_RESUME_START) -> dict[str, int]:
         """从 KData 推算 adj_factor."""
         kdata_dtype = REGISTRY.get("KData")
         kdata_file = (

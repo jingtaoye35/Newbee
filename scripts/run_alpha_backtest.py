@@ -40,7 +40,7 @@ def main() -> int:
         "alpha",
         str(args.config),
         "--universe", str(args.universe),
-        "--datas-root", str(args.data_root),
+        "--datas-root", str(args.datas_root),
         "--out-dir", str(args.out_dir),
     ]
     return newbee_main(argv)

@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from alpha_backend.datasource.service.kdata import KDataService
+from alpha_backend.datasource.storage.state import DEFAULT_RESUME_START
 
 
 def _write_universe(root: Path, codes: list[str], ipo_date: str = "1990-01-01") -> None:
@@ -42,7 +43,7 @@ def test_full_init_requires_universe(tmp_path: Path) -> None:
     """universe 为空 → RuntimeError."""
     svc = KDataService(root=str(tmp_path))
     with pytest.raises(RuntimeError, match="universe 为空"):
-        svc.full_init(start="2020-01-01")
+        svc.full_init(start=DEFAULT_RESUME_START)
 
 
 def test_full_init_writes_kdata_parquet(tmp_path: Path) -> None:

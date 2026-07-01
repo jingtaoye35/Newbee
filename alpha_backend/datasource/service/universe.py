@@ -10,7 +10,7 @@ import pandas as pd
 from alpha_backend.datasource.registry import REGISTRY
 from alpha_backend.datasource.sources.akshare import fetch_index_constituents, fetch_ipo_date
 from alpha_backend.datasource.storage.io import DataFile
-from alpha_backend.datasource.storage.state import StateTracker
+from alpha_backend.datasource.storage.state import StateTracker, DEFAULT_RESUME_START
 from alpha_backend.utils import logger
 
 
@@ -31,7 +31,7 @@ class UniverseService:
         self,
         *,
         index_name: str = "csi1000",
-        backdate_to: str = "2020-01-01",
+        backdate_to: str = DEFAULT_RESUME_START,
     ) -> dict[str, int]:
         """从指数拉成分股 + 拉每只 IPO 日期 → 写 datas/Universe.parquet.
 

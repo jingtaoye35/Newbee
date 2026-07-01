@@ -5,14 +5,13 @@ import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-
 import pandas as pd
 
 from alpha_backend.datasource.registry import REGISTRY
 from alpha_backend.datasource.service.universe import UniverseService
 from alpha_backend.datasource.sources.akshare import FetchSummary, fetch_stock_hist
 from alpha_backend.datasource.storage.io import DataFile
-from alpha_backend.datasource.storage.state import StateTracker
+from alpha_backend.datasource.storage.state import StateTracker, DEFAULT_RESUME_START
 from alpha_backend.utils import logger
 
 
@@ -34,7 +33,7 @@ class KDataService:
 
     用法:
         svc = KDataService()
-        svc.full_init(start="2020-01-01")             # 全量初始化
+        svc.full_init(start=DEFAULT_RESUME_START)             # 全量初始化
         svc.daily_update(today=date.today())           # 每日增量
         df = svc.read_window("2024-01-01", "2024-12-31")
     """
@@ -55,7 +54,7 @@ class KDataService:
     def full_init(
         self,
         *,
-        start: str = "2020-01-01",
+        start: str = DEFAULT_RESUME_START,
         source: str = "sina",
         batch_size: int = 100,
         progress: bool = True,

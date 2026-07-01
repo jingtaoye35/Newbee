@@ -21,6 +21,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from alpha_backend.datasource.registry import REGISTRY  # noqa: E402
 from alpha_backend.datasource.service.universe import UniverseService  # noqa: E402
 from alpha_backend.datasource.storage.io import DataFile  # noqa: E402
+from alpha_backend.datasource.storage.state import DEFAULT_RESUME_START
 
 # 指数名 → UniverseService.index_name 取值 (与 fetch_index_constituents 一致)
 UNIVERSE_OPTIONS = ["csi1000", "csi500", "csi300", "csi100"]
@@ -36,7 +37,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--backdate",
-        default="2020-01-01",
+        default=DEFAULT_RESUME_START,
         help="回溯 ipo_date 的默认值 (默认 1990-01-01 由 fetch_ipo_date 决定)",
     )
     parser.add_argument(

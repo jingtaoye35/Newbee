@@ -127,7 +127,7 @@ conda activate py312 && python -m alpha_backend.datasource.cli status
 
 ```
 === alpha_backend datasource status ===
-data_root: /Users/yejingtao/JohnsonProject/Newbee
+args.datas_root: /Users/yejingtao/JohnsonProject/Newbee
 universe_sha: 72e26a6481dc8e50
 
 Type             frequency  first        last         rows       stocks   updated_at

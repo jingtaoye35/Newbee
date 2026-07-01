@@ -53,22 +53,22 @@ def cmd_alpha(args: argparse.Namespace) -> int:
     start_s, end_s = resolve_data_range(cfg)
     start = date.fromisoformat(start_s)
     end = date.fromisoformat(end_s)
-    # KData 在 args.data_root 之下 (datas/KData.parquet)
+    # KData 在 args.datas_root 之下 (datas/KData.parquet)
     bars = load_bars(
         stock_codes=stock_ids,
         start=start, end=end,
         kind="adj",
-        root=args.data_root.parent,
+        root=args.datas_root.parent,
     )
     if not bars.dates:
-        print(f"ERROR: 没有可用行情 (root={args.data_root}, "
+        print(f"ERROR: 没有可用行情 (root={args.datas_root}, "
               f"range={start}~{end})", file=sys.stderr)
         return 1
     print(f"Bars: T={len(bars.dates)}, N={bars.N}, "
           f"range={bars.dates[0]} ~ {bars.dates[-1]}")
 
     # alpha store 校验
-    root = args.data_root.parent  # datas/ 目录 (alpha_store 默认放这)
+    root = args.datas_root.parent  # datas/ 目录 (alpha_store 默认放这)
     existing_dates = alpha_store.list_dates(strategy_id=sid, root=root)
     if not existing_dates:
         print(f"WARNING: alpha_store 为空: datas/alpha/{sid}/")
@@ -135,10 +135,10 @@ def cmd_backtest(args: argparse.Namespace) -> int:
         stock_codes=stock_ids,
         start=start, end=end,
         kind="adj",
-        root=args.data_root.parent,
+        root=args.datas_root.parent,
     )
     if not bars.dates:
-        print(f"ERROR: 没有可用行情 (root={args.data_root}, "
+        print(f"ERROR: 没有可用行情 (root={args.datas_root}, "
               f"range={start}~{end})", file=sys.stderr)
         return 1
     print(f"Bars: T={len(bars.dates)}, N={bars.N}")
@@ -159,7 +159,7 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     print(f"Alpha shape: {alpha_panel.shape}, non-NaN: {(~np.isnan(alpha_panel)).sum()}")
 
     # 写 alpha_store (cache)
-    root = args.data_root.parent  # datas/ 目录
+    root = args.datas_root.parent  # datas/ 目录
     for t, d in enumerate(bars.dates):
         if not np.isnan(alpha_panel[t]).all():
             alpha_store.write(
@@ -217,8 +217,8 @@ def cmd_data_status(args: argparse.Namespace) -> int:
     from alpha_backend.datasource import cli as ds_cli
 
     argv = ["status"]
-    if args.data_root:
-        argv += ["--datas-root", str(args.data_root)]
+    if args.datas_root:
+        argv += ["--datas-root", str(args.datas_root)]
     return ds_cli.main(argv)
 
 
@@ -231,8 +231,8 @@ def cmd_data_update(args: argparse.Namespace) -> int:
         argv += ["--type", args.type]
     if args.source:
         argv += ["--source", args.source]
-    if args.data_root:
-        argv += ["--datas-root", str(args.data_root)]
+    if args.datas_root:
+        argv += ["--datas-root", str(args.datas_root)]
     return ds_cli.main(argv)
 
 

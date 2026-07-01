@@ -19,7 +19,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from alpha_backend.utils import attach_file_log, logger
-
+from alpha_backend.datasource.storage.state import DEFAULT_RESUME_START
 
 # CLI 自身文件位置, 用于解析仓库根 (alpha_backend/datasource/cli.py → parents[2] = repo root)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,11 +30,11 @@ def cmd_data_status(args: argparse.Namespace) -> int:
     from alpha_backend.datasource.storage.io import DataFile
     from alpha_backend.datasource.storage.state import StateTracker
 
-    root = Path(args.data_root) if args.data_root else Path.cwd()
+    root = Path(args.datas_root) if args.datas_root else Path.cwd()
     tracker = StateTracker(root / "datas" / "_Manifest" / "Data_State.json")
     states = tracker.read()
     print(f"=== alpha_backend datasource status ===")
-    print(f"data_root: {root}")
+    print(f"args.datas_root: {root}")
     print(f"universe_sha: {tracker.get_universe_sha() or '(unset)'}")
     print()
     print(f"{'Type':<16} {'frequency':<10} {'first':<12} {'last':<12} {'rows':<10} {'stocks':<8} {'updated_at'}")
@@ -58,7 +58,7 @@ def cmd_data_update(args: argparse.Namespace) -> int:
     type_name = args.type
     dtype = REGISTRY.get(type_name)
 
-    root = Path(args.data_root) if args.data_root else Path.cwd()
+    root = Path(args.datas_root) if args.datas_root else Path.cwd()
     if dtype.name == "KData":
         from alpha_backend.datasource.service.kdata import KDataService
 
@@ -108,7 +108,7 @@ def cmd_data_update(args: argparse.Namespace) -> int:
 def cmd_data_init_universe(args: argparse.Namespace) -> int:
     from alpha_backend.datasource.service.universe import UniverseService
 
-    root = Path(args.data_root) if args.data_root else Path.cwd()
+    root = Path(args.datas_root) if args.datas_root else Path.cwd()
     result = UniverseService(root=str(root)).full_init(
         index_name=args.index, backdate_to=args.backdate
     )
@@ -308,14 +308,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_update.add_argument("--source", default="sina", choices=["sina", "em", "tx"])
     p_update.add_argument("--index", default="csi1000", help="universe 指数名 (仅 Universe)")
-    p_update.add_argument("--backdate", default="2020-01-01", help="backdate (仅 Universe)")
+    p_update.add_argument("--backdate", default=DEFAULT_RESUME_START, help="backdate (仅 Universe)")
     p_update.add_argument("--datas-root", type=Path, default=Path.cwd())
     p_update.set_defaults(func=cmd_data_update)
 
     # init-universe
     p_uni = sub.add_parser("init-universe", help="初始化 universe")
     p_uni.add_argument("--index", default="csi1000")
-    p_uni.add_argument("--backdate", default="2020-01-01")
+    p_uni.add_argument("--backdate", default=DEFAULT_RESUME_START)
     p_uni.add_argument("--datas-root", type=Path, default=Path.cwd())
     p_uni.set_defaults(func=cmd_data_init_universe)
 

@@ -15,7 +15,7 @@ import pandas as pd
 from alpha_backend.datasource.registry import REGISTRY
 from alpha_backend.datasource.service.universe import UniverseService
 from alpha_backend.datasource.storage.io import DataFile
-from alpha_backend.datasource.storage.state import StateTracker
+from alpha_backend.datasource.storage.state import StateTracker, DEFAULT_RESUME_START
 from alpha_backend.utils import logger
 
 
@@ -74,7 +74,7 @@ class TradeStatusService:
     def full_init(
         self,
         *,
-        start: str = "2020-01-01",
+        start: str = DEFAULT_RESUME_START,
         batch_size: int = 100,
     ) -> dict[str, int]:
         """从 datas/KData.parquet 推断 Trade_Status (M1: 无外部源)."""

@@ -18,7 +18,7 @@ import pytest
 from alpha_backend.datasource import cli as cli_mod
 from alpha_backend.datasource.service.trading_date import Trading_DateService
 from alpha_backend.datasource.service.trading_date import UpdateSummary as RealUpdateSummary
-
+from alpha_backend.datasource.storage.state import DEFAULT_RESUME_START
 
 def _make_args(tmp_path: Path) -> Namespace:
     """构造 cmd_data_update 期望的 Namespace."""
@@ -26,8 +26,8 @@ def _make_args(tmp_path: Path) -> Namespace:
         type="Trading_Date",
         source="sina",
         index="csi1000",
-        backdate="2020-01-01",
-        data_root=tmp_path,
+        backdate=DEFAULT_RESUME_START,
+        args.datas_root=tmp_path,
     )
 
 

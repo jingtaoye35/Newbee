@@ -42,7 +42,7 @@ def main() -> int:
     args = parser.parse_args()
 
     argv = ["update", "--type", args.type, "--source", args.source,
-            "--datas-root", str(args.data_root)]
+            "--datas-root", str(args.datas_root)]
     if args.dry_run:
         argv.append("--dry-run")
     if args.no_progress:
